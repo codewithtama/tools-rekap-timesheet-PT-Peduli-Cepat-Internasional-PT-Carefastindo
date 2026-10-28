@@ -1,6 +1,6 @@
 {
   "name": "Sistem Proses Absensi & Paket PIC",
-  "description": "Aplikasi konversi timesheet, summary absensi, deteksi pola absensi, dan pembuatan paket PIC proyek lengkap dengan export Excel & ZIP.",
+  "description": "Aplikasi konversi timesheet, summary absensi, deteksi pola absensi, visualisasi data real-time, dan pembuatan paket PIC proyek lengkap dengan export Excel & ZIP.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

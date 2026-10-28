@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Download, AlertTriangle, ChevronDown, ChevronRight, Eye } from "lucide-react";
+import { Download, AlertTriangle } from "lucide-react";
 import { TimesheetData } from "../types/attendance";
 import { tglId, labelHari } from "../utils/attendanceEngine";
 import { buildRekapXlsx, downloadBlob } from "../utils/excelExporter";
@@ -34,7 +34,7 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
   const getCodeBadgeClass = (code: string) => {
     const up = (code || "").toUpperCase();
     if (code === "H") return "bg-emerald-100 text-emerald-800 font-semibold";
-    if (code === "h") return "bg-sky-100 text-sky-800 font-bold border border-sky-300"; // BA diterima
+    if (code === "h") return "bg-sky-100 text-sky-800 font-bold border border-sky-300";
     if (up === "A") return "bg-rose-100 text-rose-800 font-bold";
     if (up === "O") return "bg-slate-200 text-slate-700";
     if (up === "I" || up === "IR" || up === "S" || up === "SR")
@@ -45,7 +45,6 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
 
   return (
     <div className="space-y-6">
-      {/* Overview Cards & Selector */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {timesheets.map(ts => {
           const isSelected = ts.id === selectedTimesheet?.id;
@@ -66,11 +65,11 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
                 </span>
                 {hasWarn && (
                   <span
-                    title={`${ts.warnings?.length} selisih dengan sistem`}
+                    title={`${ts.warnings?.length} baris berbeda dengan total bawaan sistem`}
                     className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-sm shrink-0"
                   >
                     <AlertTriangle className="w-3 h-3" />
-                    {ts.warnings?.length} Warning
+                    {ts.warnings?.length} Perlu Dicek
                   </span>
                 )}
               </div>
@@ -90,10 +89,10 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
                     handleDownload(ts);
                   }}
                   disabled={downloadingId === ts.id}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-900 hover:text-blue-700 hover:underline"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-900 hover:text-blue-700 hover:underline cursor-pointer"
                 >
                   <Download className="w-3 h-3" />
-                  {downloadingId === ts.id ? "Membuat..." : "Unduh Excel"}
+                  {downloadingId === ts.id ? "Membuat file..." : "Unduh Rekap Excel"}
                 </button>
               </div>
             </div>
@@ -101,10 +100,8 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
         })}
       </div>
 
-      {/* Selected Timesheet Detail & Interactive Table */}
       {selectedTimesheet && (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-          {/* Header Bar */}
           <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
             <div>
               <div className="flex items-center gap-2">
@@ -118,12 +115,12 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
               <p className="text-xs text-slate-500 mt-0.5">
                 Periode:{" "}
                 {selectedTimesheet.periode
-                  ? `${tglId(selectedTimesheet.periode[0])} s/d ${tglId(selectedTimesheet.periode[1])}`
+                  ? `${tglId(selectedTimesheet.periode[0])} sampai ${tglId(selectedTimesheet.periode[1])}`
                   : "-"}{" "}
                 · File: {selectedTimesheet.fileName}
                 {selectedTimesheet.dipotong_dari && (
                   <span className="text-blue-700 font-medium ml-1">
-                    (Dipotong ke {selectedTimesheet.day_labels.length} hari dari {selectedTimesheet.dipotong_dari} hari)
+                    (Disesuaikan ke {selectedTimesheet.day_labels.length} hari kerja dari total {selectedTimesheet.dipotong_dari} hari)
                   </span>
                 )}
               </p>
@@ -132,21 +129,20 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
             <button
               onClick={() => handleDownload(selectedTimesheet)}
               disabled={downloadingId === selectedTimesheet.id}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-900 hover:bg-blue-800 rounded-lg transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-900 hover:bg-blue-800 rounded-lg transition-colors shadow-xs cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               {downloadingId === selectedTimesheet.id
-                ? "Menyiapkan Excel..."
+                ? "Menyiapkan file..."
                 : `Unduh Rekap-Absensi-${selectedTimesheet.fileName.replace(/\.[^/.]+$/, "")}.xlsx`}
             </button>
           </div>
 
-          {/* System Warning Discrepancies if any */}
           {selectedTimesheet.warnings && selectedTimesheet.warnings.length > 0 && (
             <div className="p-3 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 space-y-1">
               <div className="font-semibold flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                Peringatan Perbedaan Cek Silang Bawaan Sistem ({selectedTimesheet.warnings.length} data):
+                Catatan Perbedaan dengan Hitungan Bawaan Sistem ({selectedTimesheet.warnings.length} baris):
               </div>
               <ul className="list-disc list-inside space-y-0.5 text-[11px] text-amber-800 pl-1 max-h-28 overflow-y-auto font-mono">
                 {selectedTimesheet.warnings.map((w, i) => (
@@ -156,7 +152,6 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
             </div>
           )}
 
-          {/* Data Table */}
           <div className="overflow-x-auto max-h-[500px]">
             <table className="w-full text-xs text-left border-collapse font-sans">
               <thead className="bg-[#1F3864] text-white sticky top-0 z-10 select-none">
@@ -248,7 +243,6 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
                         {e.jab}
                       </td>
 
-                      {/* Daily code columns */}
                       {e.codes.map((c, cIdx) => (
                         <td
                           key={cIdx}
@@ -268,7 +262,6 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
                         </td>
                       ))}
 
-                      {/* Rekap Totals */}
                       <td className="px-2 py-1.5 border border-slate-200 text-center font-semibold text-slate-900 tabular-nums">
                         {hadir}
                       </td>
@@ -300,15 +293,14 @@ export const StepKonversiView: React.FC<StepKonversiViewProps> = ({ timesheets }
             </table>
           </div>
 
-          {/* Legend Footnote */}
           <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
-            <span className="font-semibold text-slate-800">Keterangan:</span>
-            <span><strong className="text-emerald-700">H</strong> = Hadir</span>
-            <span><strong className="text-sky-700">h</strong> = BA (Hadir &amp; BA Diterima)</span>
+            <span className="font-semibold text-slate-800">Keterangan Kode:</span>
+            <span><strong className="text-emerald-700">H</strong> = Hadir biasa</span>
+            <span><strong className="text-sky-700">h</strong> = BA Diterima (Hadir)</span>
             <span><strong className="text-amber-700">I / IR</strong> = Izin</span>
             <span><strong className="text-amber-700">S / SR</strong> = Sakit</span>
-            <span><strong className="text-rose-700">A / a</strong> = Alpa</span>
-            <span><strong className="text-slate-600">O</strong> = Off</span>
+            <span><strong className="text-rose-700">A / a</strong> = Alfa (termasuk BA Ditolak)</span>
+            <span><strong className="text-slate-600">O</strong> = Off (Libur Rutin)</span>
             <span><strong className="text-blue-700">G</strong> = Lembur Ganti</span>
           </div>
         </div>

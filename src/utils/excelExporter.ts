@@ -11,7 +11,6 @@ import {
   TimesheetData,
   RekapProjectData,
   KaryawanCek,
-  PolaDetail,
   PicPackage,
   HARI,
   BLN,
@@ -23,7 +22,6 @@ import {
   periodeJudul,
   hitungPola,
   cocokkan,
-  hitungRekapProject,
 } from "./attendanceEngine";
 
 const FONT_NAME = "Arial";
@@ -55,9 +53,6 @@ function getColLetter(colIndex: number): string {
   return letter;
 }
 
-/**
- * Apply cell formatting helper
- */
 function styleCell(
   cell: ExcelJS.Cell,
   options: {
@@ -90,7 +85,6 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
   const lastCol = cKet;
   const cG = cSum + SUM_HEAD.indexOf("Lembur Ganti");
 
-  // Title and metadata rows
   ws.getCell("A1").value = "REKAPITULASI ABSENSI";
   ws.getCell("A1").font = { name: FONT_NAME, size: 16, bold: true };
 
@@ -114,7 +108,6 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
     ws.getCell(`D${r}`).font = { name: FONT_NAME, size: 10 };
   });
 
-  // Table Headers: R1=6, R2=7
   const R1 = 6;
   const R2 = 7;
 
@@ -133,7 +126,6 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
   ws.mergeCells(R1, cKet, R2, cKet);
   ws.getCell(R1, cKet).value = "Keterangan";
 
-  // Day subheaders (R2)
   for (let i = 0; i < nd; i++) {
     const d = data.dates[i];
     const col = cDay0 + i;
@@ -145,12 +137,10 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
     }
   }
 
-  // Rekap Total subheaders
   SUM_HEAD.forEach((h, i) => {
     ws.getCell(R2, cSum + i).value = h;
   });
 
-  // Style header cells
   for (const r of [R1, R2]) {
     for (let c = 1; c <= lastCol; c++) {
       const cell = ws.getCell(r, c);
@@ -164,7 +154,6 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
   }
   ws.getRow(R2).height = 32;
 
-  // Employee rows
   const firstRow = R2 + 1;
   data.emps.forEach((e, idx) => {
     const r = firstRow + idx;
@@ -173,34 +162,32 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
     ws.getCell(r, 3).value = e.nama;
     ws.getCell(r, 4).value = e.jab;
 
-    // Daily codes
     e.codes.forEach((code, cIdx) => {
       const col = cDay0 + cIdx;
       const cell = ws.getCell(r, col);
       cell.value = code;
 
-      // Color coding cell
       const up = (code || "").toUpperCase();
       let fillColor: string | null = null;
       let fontColor = "FF000000";
 
       if (code === "H") {
-        fillColor = "FFC6EFCE"; // Light green
+        fillColor = "FFC6EFCE";
         fontColor = "FF006100";
       } else if (code === "h") {
-        fillColor = "FFDDEBF7"; // Light blue (BA)
+        fillColor = "FFDDEBF7";
         fontColor = "FF1F4E78";
       } else if (up === "A") {
-        fillColor = "FFFFC7CE"; // Light red (Alfa)
+        fillColor = "FFFFC7CE";
         fontColor = "FF9C0006";
       } else if (up === "O") {
-        fillColor = "FFD9D9D9"; // Gray
+        fillColor = "FFD9D9D9";
         fontColor = "FF404040";
       } else if (up === "I" || up === "IR" || up === "S" || up === "SR") {
-        fillColor = "FFFFEB9C"; // Light yellow
+        fillColor = "FFFFEB9C";
         fontColor = "FF7F6000";
       } else if (up === "G") {
-        fillColor = "FFE4DFEC"; // Lavender
+        fillColor = "FFE4DFEC";
         fontColor = "FF403151";
       }
 
@@ -214,7 +201,6 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
       }
     });
 
-    // Formulas for Rekap
     const rng = `${getColLetter(cDay0)}${r}:${getColLetter(cDay1)}${r}`;
     ws.getCell(r, cSum).value = { formula: `COUNTIF(${rng},"H")` };
     ws.getCell(r, cSum + 1).value = { formula: `SUMPRODUCT(--EXACT(${rng},"h"))` };
@@ -226,7 +212,6 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
 
     ws.getCell(r, cKet).value = e.ket === "-" ? "" : e.ket;
 
-    // Apply borders and alignments
     for (let c = 1; c <= lastCol; c++) {
       const cell = ws.getCell(r, c);
       cell.border = THIN_BORDER;
@@ -255,7 +240,6 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
   const lastRow = firstRow + data.emps.length - 1;
   const tr = lastRow + 1;
 
-  // Grand total row
   ws.mergeCells(tr, 1, tr, cDay1);
   ws.getCell(tr, 1).value = "TOTAL";
   for (let i = 0; i < SUM_HEAD.length; i++) {
@@ -275,7 +259,6 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
   }
   ws.getRow(tr).height = 22;
 
-  // Legend
   const legR = tr + 2;
   ws.getCell(legR, 1).value = "Keterangan Kode";
   ws.getCell(legR, 1).font = { name: FONT_NAME, size: 10, bold: true };
@@ -293,7 +276,6 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
     ws.getCell(legR + k + 1, 1).font = { name: FONT_NAME, size: 9 };
   });
 
-  // Column widths
   ws.getColumn(1).width = 6;
   ws.getColumn(2).width = 14;
   ws.getColumn(3).width = 28;
@@ -313,7 +295,7 @@ export async function buildRekapXlsx(data: TimesheetData): Promise<Blob> {
 }
 
 /**
- * LANGKAH 2: Build SUMMARY_ABSENSI_<periode>.xlsx (13 Columns)
+ * LANGKAH 2: Build SUMMARY_ABSENSI_<periode>.xlsx
  */
 export async function buildSummaryXlsx(
   projects: RekapProjectData[],
@@ -325,14 +307,12 @@ export async function buildSummaryXlsx(
     views: [{ showGridLines: true }],
   });
 
-  // Title
   ws.mergeCells("A1:M1");
   ws.getCell("A1").value = `RINGKASAN ABSENSI APLIKASI PERIODE ${periodeJudul(d0, d1)}`;
   ws.getCell("A1").font = { name: FONT_NAME, size: 14, bold: true, color: { argb: "FF1F3864" } };
   ws.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
   ws.getRow(1).height = 28;
 
-  // Header row 3 (13 columns)
   const headers = [
     "NO",
     "PROJECT / LOKASI KERJA",
@@ -365,7 +345,6 @@ export async function buildSummaryXlsx(
   });
   ws.getRow(3).height = 30;
 
-  // Match projects against PROYEK_TEMPLATE
   const cocok = cocokkan(projects, PROYEK_TEMPLATE);
   const rowsData: { nama_tampil: string; data: RekapProjectData | null }[] = [];
 
@@ -380,7 +359,6 @@ export async function buildSummaryXlsx(
     rowsData.push({ nama_tampil: nama, data: dp });
   });
 
-  // Append new projects not in template
   projects.forEach((p, i) => {
     if (!(i in cocok)) {
       rowsData.push({ nama_tampil: p.nama, data: p });
@@ -406,13 +384,11 @@ export async function buildSummaryXlsx(
       ws.getCell(r, 11).value = p.BAT;
     }
 
-    // Formula: TOTAL HK = D + F (H + G)
     ws.getCell(r, 12).value = {
       formula: `IF(COUNT(D${r},F${r})=0,"",D${r}+F${r})`,
     };
     ws.getCell(r, 13).value = "";
 
-    // Style row
     for (let c = 1; c <= 13; c++) {
       const cell = ws.getCell(r, c);
       cell.border = THIN_BORDER;
@@ -435,7 +411,6 @@ export async function buildSummaryXlsx(
   const lastRow = FIRST + rowsData.length - 1;
   const rt = lastRow + 1;
 
-  // GRAND TOTAL row
   ws.getCell(rt, 2).value = "GRAND TOTAL";
   for (let c = 3; c <= 12; c++) {
     const colLet = getColLetter(c);
@@ -453,7 +428,6 @@ export async function buildSummaryXlsx(
   }
   ws.getRow(rt).height = 22;
 
-  // Footer Note
   const rn = rt + 2;
   ws.mergeCells(`A${rn}:M${rn}`);
   const belumAda = rowsData.filter(b => b.data === null).map(b => b.nama_tampil);
@@ -475,7 +449,7 @@ export async function buildSummaryXlsx(
 }
 
 /**
- * LANGKAH 3: Build individual Category Workbook (CEK_ALFA, CEK_SAKIT, CEK_IZIN, CEK_LEMBUR, CEK_BA)
+ * LANGKAH 3: Build individual Category Workbook
  */
 export async function buildCekKategoriXlsx(
   karyawan: KaryawanCek[],
@@ -487,7 +461,6 @@ export async function buildCekKategoriXlsx(
   const wb = new ExcelJS.Workbook();
 
   if (kat === "BA") {
-    // 1. Summary Karyawan
     const ws1 = wb.addWorksheet("Summary Karyawan");
     let no1 = 0;
     let totH = 0;
@@ -522,7 +495,6 @@ export async function buildCekKategoriXlsx(
       ["TOTAL", "", "", "", "", totH, totA, totH + totA, ""]
     );
 
-    // 2. Detail Kejadian
     const ws2 = wb.addWorksheet("Detail Kejadian");
     let no2 = 0;
     const baris2: any[] = [];
@@ -542,7 +514,6 @@ export async function buildCekKategoriXlsx(
       [1, 2, 6, 7]
     );
 
-    // 3. Summary Project
     const ws3 = wb.addWorksheet("Summary Project");
     const baris3 = Object.entries(perProject).map(([namaP, v], idx) => [
       idx + 1,
@@ -562,7 +533,6 @@ export async function buildCekKategoriXlsx(
       ["TOTAL", "", Object.values(perProject).reduce((acc, v) => acc + v[0], 0), totH, totA, totH + totA]
     );
   } else {
-    // Normal category (ALFA, SAKIT, IZIN, LEMBUR)
     const ws1 = wb.addWorksheet("Summary Karyawan");
     let no1 = 0;
     let total = 0;
@@ -626,7 +596,6 @@ export async function buildCekKategoriXlsx(
       ["TOTAL", "", Object.values(perProject).reduce((acc, v) => acc + v[0], 0), total]
     );
 
-    // Sheet 4: Perlu Tindak Lanjut for ALFA, SAKIT, IZIN
     if (kat === "ALFA" || kat === "SAKIT" || kat === "IZIN") {
       const polas = hitungPola(karyawan, kat, hariBelumFinal);
       const ws4 = wb.addWorksheet("Perlu Tindak Lanjut");
@@ -649,7 +618,6 @@ export async function buildCekKategoriXlsx(
         [1, 2, 6]
       );
 
-      // Note on Sheet 4
       const noteR = 3;
       ws4.getCell(`A${noteR}`).value =
         polas.length > 0
@@ -670,9 +638,6 @@ export async function buildCekKategoriXlsx(
   });
 }
 
-/**
- * Helper to populate standard formatted table sheet
- */
 function populateSheetTable(
   ws: ExcelJS.Worksheet,
   title: string,
@@ -751,12 +716,10 @@ export async function buildPicExcel(
   const wb = new ExcelJS.Workbook();
   const suffix = periodeTxt ? ` PERIODE ${periodeTxt}` : "";
 
-  // 1. Ringkasan
   const ws1 = wb.addWorksheet("Ringkasan");
   const r1: any[] = [];
   const tlNuc = new Set(pkg.tl_baris.map(r => `${r[1]}___${r[2]}`));
 
-  // Sort karyawan ringkas
   pkg.daftar.forEach((k, idx) => {
     const c = { ALFA: 0, SAKIT: 0, IZIN: 0, LEMBUR: 0, BA_h: 0, BA_a: 0 };
     k.kejadian.forEach(([, kode, kat]) => {
@@ -820,7 +783,6 @@ export async function buildPicExcel(
     ]
   );
 
-  // 2. Detail Kejadian
   const ws2 = wb.addWorksheet("Detail Kejadian");
   let no = 0;
   const r2: any[] = [];
@@ -846,7 +808,6 @@ export async function buildPicExcel(
     [1, 2, 5, 6, 7]
   );
 
-  // 3. Perlu Tindak Lanjut
   const ws3 = wb.addWorksheet("Perlu Tindak Lanjut");
   populateSheetTable(
     ws3,
@@ -918,7 +879,7 @@ export async function buildDefaultTemplateBlob(): Promise<Blob> {
 }
 
 /**
- * Build Single Project ZIP: contains ABSENSI_<proyek>.xlsx, Rekap-Absensi-<proyek>.xlsx, and PESAN_<proyek>.txt
+ * Build Single Project ZIP
  */
 export async function buildProjectZip(
   pkg: PicPackage,
@@ -929,23 +890,20 @@ export async function buildProjectZip(
   const zip = new JSZip();
   const folder = zip.folder(pkg.aman) || zip;
 
-  // 1. ABSENSI_<proyek>_<stempel>.xlsx
   const absensiBlob = await buildPicExcel(pkg, periodeTxt);
   folder.file(`ABSENSI_${pkg.aman}_${stempel}.xlsx`, absensiBlob);
 
-  // 2. Rekap project file (if available)
   if (rekapBlob) {
     folder.file(`Rekap-Absensi-${pkg.aman}.xlsx`, rekapBlob);
   }
 
-  // 3. PESAN_<proyek>.txt
   folder.file(`PESAN_${pkg.aman}.txt`, pkg.pesan);
 
   return zip.generateAsync({ type: "blob" });
 }
 
 /**
- * Build All-In-One Master ZIP Package: includes all PIC packages, summary, and check files
+ * Build Master ZIP Package
  */
 export async function buildMasterZip(
   picPackages: PicPackage[],
@@ -958,18 +916,15 @@ export async function buildMasterZip(
   const zip = new JSZip();
   const rootFolder = zip.folder(`PAKET_PIC_${stempel}`) || zip;
 
-  // Add Summary file
   if (summaryBlob) {
     zip.file(`SUMMARY_ABSENSI_${stempel}.xlsx`, summaryBlob);
   }
 
-  // Add 5 Cek files
   const cekFolder = zip.folder("CEK_ABSENSI") || zip;
   cekBlobs.forEach(item => {
     cekFolder.file(item.name, item.blob);
   });
 
-  // Add Project Packages
   for (const pkg of picPackages) {
     const pFolder = rootFolder.folder(pkg.aman) || rootFolder;
     const absensiBlob = await buildPicExcel(pkg, periodeTxt);
@@ -982,7 +937,6 @@ export async function buildMasterZip(
 
     pFolder.file(`PESAN_${pkg.aman}.txt`, pkg.pesan);
 
-    // Also place individual project ZIP into root folder matching python script
     const singleProjZip = new JSZip();
     const sf = singleProjZip.folder(pkg.aman) || singleProjZip;
     sf.file(`ABSENSI_${pkg.aman}_${stempel}.xlsx`, absensiBlob);

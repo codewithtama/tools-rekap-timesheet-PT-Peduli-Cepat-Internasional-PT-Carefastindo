@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { Download, AlertCircle, FileCheck, CheckCircle } from "lucide-react";
+import { Download, AlertCircle, CheckCircle } from "lucide-react";
 import { RekapProjectData, PROYEK_TEMPLATE } from "../types/attendance";
 import { cocokkan, periodeJudul } from "../utils/attendanceEngine";
-import { buildSummaryXlsx, downloadBlob, buildDefaultTemplateBlob } from "../utils/excelExporter";
+import { buildSummaryXlsx, downloadBlob } from "../utils/excelExporter";
 
 interface StepSummaryViewProps {
   projects: RekapProjectData[];
@@ -21,7 +21,6 @@ export const StepSummaryView: React.FC<StepSummaryViewProps> = ({
 }) => {
   const [downloading, setDownloading] = useState(false);
 
-  // Match projects against PROYEK_TEMPLATE
   const cocok = cocokkan(projects, PROYEK_TEMPLATE);
 
   const rows: {
@@ -43,14 +42,12 @@ export const StepSummaryView: React.FC<StepSummaryViewProps> = ({
     rows.push({ namaTampil: nama, data: dp, status });
   });
 
-  // Append new projects not in template
   projects.forEach((p, i) => {
     if (!(i in cocok)) {
       rows.push({ namaTampil: p.nama, data: p, status: "proyek baru" });
     }
   });
 
-  // Calculate Grand Totals
   const grandTotal = {
     mp: 0,
     H: 0,
@@ -97,82 +94,80 @@ export const StepSummaryView: React.FC<StepSummaryViewProps> = ({
     if (status === "sama") {
       return (
         <span className="text-[10px] text-emerald-700 font-medium">
-          Persis
+          Sama Persis
         </span>
       );
     }
     if (status === "alias") {
       return (
         <span className="text-[10px] text-blue-700 font-medium">
-          Alias
+          Nama Alias
         </span>
       );
     }
     if (status.startsWith("mirip")) {
       return (
         <span className="text-[10px] text-indigo-700 font-medium">
-          {status}
+          {status.replace("mirip", "Mirip")}
         </span>
       );
     }
     if (status === "proyek baru") {
       return (
         <span className="text-[10px] text-purple-700 font-medium">
-          Tambahan
+          Proyek Tambahan
         </span>
       );
     }
     return (
       <span className="text-[10px] text-slate-400 italic">
-        Belum ada file
+        Belum Ada File
       </span>
     );
   };
 
   return (
     <div className="space-y-4">
-      {/* Missing Template Notice Banner */}
       {!templateLoaded && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900">
           <div className="flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">
-                Langkah 2 dilewati karena file SUMMARY_ABSENSI_TEMPLATE.xlsx belum diunggah.
+                Langkah 2 dilewati karena file template summary belum dimasukkan.
               </p>
               <p className="text-[11px] text-amber-800 mt-0.5">
-                Sesuai script asli, Anda dapat menggunakan template standar atau mengunggah template kustom.
+                Jika ingin membuat rekap summary proyek, Anda bisa pakai format standar bawaan atau unggah template Anda sendiri.
               </p>
             </div>
           </div>
           <button
             onClick={onActivateDefaultTemplate}
-            className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg font-medium transition-colors whitespace-nowrap shrink-0 shadow-2xs"
+            className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg font-medium transition-colors whitespace-nowrap shrink-0 shadow-2xs cursor-pointer"
           >
-            Aktifkan Template Standar
+            Gunakan Format Standar
           </button>
         </div>
       )}
 
-      {/* Main Table Card */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
         <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
           <div>
             <h3 className="text-sm font-bold text-slate-900">
-              RINGKASAN ABSENSI APLIKASI PERIODE {periodeJudul(d0, d1).toUpperCase()}
+              REKAP SUMMARY ABSENSI SELURUH PROYEK - PERIODE {periodeJudul(d0, d1).toUpperCase()}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Format 13 kolom standar template absensi, termasuk BA diterima (h) dan BA ditolak (a).
+              Format rekap 13 kolom standar, mencakup kehadiran, lembur ganti, serta BA diterima (h) dan ditolak (a).
             </p>
           </div>
 
           <button
             onClick={handleDownloadSummary}
             disabled={downloading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-900 hover:bg-blue-800 rounded-lg transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-900 hover:bg-blue-800 rounded-lg transition-colors shadow-xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
-            {downloading ? "Membuat Excel..." : "Unduh SUMMARY_ABSENSI.xlsx"}
+            {downloading ? "Sedang membuat file..." : "Unduh SUMMARY_ABSENSI.xlsx"}
           </button>
         </div>
 
@@ -276,7 +271,6 @@ export const StepSummaryView: React.FC<StepSummaryViewProps> = ({
                 );
               })}
             </tbody>
-            {/* GRAND TOTAL Row */}
             <tfoot className="bg-slate-200 font-bold text-slate-900 border-t-2 border-slate-400">
               <tr>
                 <td className="px-2.5 py-2 border border-slate-300 text-center"></td>
@@ -319,10 +313,8 @@ export const StepSummaryView: React.FC<StepSummaryViewProps> = ({
           </table>
         </div>
 
-        {/* Note Box */}
         <div className="p-3 bg-slate-50 border-t border-slate-200 text-[11px] text-slate-600 leading-relaxed">
-          <strong>Catatan:</strong> H sudah termasuk h (BA diterima), TOTAL HK = H + G, BA ditolak (a) tetap dihitung di Alfa.
-          Angka dihitung dari file Rekap-Absensi masing-masing proyek (periode {periodeJudul(d0, d1)}).
+          <strong>Catatan:</strong> Kolom H sudah mencakup h (BA diterima). Total HK adalah penjumlahan Hadir + Lembur Ganti (H + G). BA yang ditolak (a) tetap dihitung sebagai Alfa. Angka diambil dari file Rekap-Absensi masing-masing proyek (periode {periodeJudul(d0, d1)}).
         </div>
       </div>
     </div>

@@ -13,7 +13,6 @@ import {
   HARI,
   BLN,
   BULAN,
-  BLN_SHORT,
   PROYEK_TEMPLATE,
   ALIAS,
   KODE_KOSONG,
@@ -26,23 +25,32 @@ import {
 /**
  * Format Date into Indonesian display: e.g. "15 Okt 2026"
  */
-export function tglId(d: Date): string {
+export function tglId(d: Date | null | undefined): string {
+  if (!d || !(d instanceof Date) || isNaN(d.getTime())) return "-";
   return `${d.getDate()} ${BLN[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 /**
- * Format Date to ISO YYYY-MM-DD
+ * Format Date to ISO YYYY-MM-DD safely
  */
-export function toISODate(d: Date): string {
+export function toISODate(d: Date | null | undefined): string {
+  if (!d || !(d instanceof Date) || isNaN(d.getTime())) return "";
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
-export function parseISODate(str: string): Date {
-  const [y, m, d] = str.split("-").map(Number);
-  return new Date(y, m - 1, d);
+/**
+ * Parse YYYY-MM-DD safely in local time without timezone drift
+ */
+export function parseISODate(str: string | null | undefined): Date {
+  if (!str) return new Date();
+  const parts = str.split("-").map(Number);
+  if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
+    return new Date();
+  }
+  return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
 /**
@@ -108,12 +116,10 @@ export function stringSimilarity(a: string, b: string): number {
   if (!a || !b) return 0.0;
   if (a === b) return 1.0;
 
-  // Find matching blocks (longest common contiguous sequences)
   function findMatchingBlocks(s1: string, s2: string): number {
     let matches = 0;
     const l1 = s1.length;
     const l2 = s2.length;
-    // Simple dynamic programming for common substrings
     const dp: number[][] = Array(l1 + 1).fill(0).map(() => Array(l2 + 1).fill(0));
     let maxLen = 0;
     let end1 = 0;
@@ -165,7 +171,6 @@ export function parseTimesheet(raw: string, fileName: string): TimesheetData {
   const kodeMatch = raw.match(/Payroll Period Code\s*([^<\r\n]+)/i);
   const periodeMatch = raw.match(/Periode\s*:\s*(\d{4}-\d{2}-\d{2})\s*-\s*(\d{4}-\d{2}-\d{2})/i);
 
-  // Parse HTML tables via DOMParser
   const parser = new DOMParser();
   const doc = parser.parseFromString(raw, "text/html");
 
@@ -183,7 +188,6 @@ export function parseTimesheet(raw: string, fileName: string): TimesheetData {
     throw new Error("Tabel absensi tidak ditemukan di file");
   }
 
-  // Extract heads
   const ths = Array.from(tableElem.querySelectorAll("th"));
   let heads: string[] = [];
   if (ths.length > 0) {
@@ -203,7 +207,6 @@ export function parseTimesheet(raw: string, fileName: string): TimesheetData {
   const nd = idxH - 3;
   const day_labels = heads.slice(3, idxH);
 
-  // Extract employees
   const trs = Array.from(tableElem.querySelectorAll("tr"));
   const emps: Employee[] = [];
   let cur: Employee | null = null;
@@ -218,7 +221,6 @@ export function parseTimesheet(raw: string, fileName: string): TimesheetData {
     }
 
     if (/^\d+$/.test(first)) {
-      // Row 1 of employee
       const codes = (cells.slice(3, 3 + nd).concat(Array(nd).fill(""))).slice(0, nd);
       const sys = cells.slice(3 + nd, 3 + nd + 8);
       const ket = cells.length > 3 + nd + 8 ? cells[3 + nd + 8] : "";
@@ -235,7 +237,6 @@ export function parseTimesheet(raw: string, fileName: string): TimesheetData {
       };
       emps.push(cur);
     } else if (first === "" && cur !== null && !cur.nama) {
-      // Sub-row of employee containing name in cell 1 and 'G' (Lembur) codes in date columns
       cur.nama = cells.length > 1 ? cells[1] : "";
       const bawah = cells.slice(3, 3 + nd);
       const g_hari: number[] = [];
@@ -253,7 +254,6 @@ export function parseTimesheet(raw: string, fileName: string): TimesheetData {
     throw new Error("Tidak ada data karyawan di file " + fileName);
   }
 
-  // Calculate dates per column
   const dates: (Date | null)[] = Array(nd).fill(null);
   let periode: [Date, Date] | null = null;
 
@@ -303,7 +303,7 @@ export function cekSilangSistem(data: TimesheetData): string[] {
     const [H, I, A, , O, S, SR, IR] = s.map(x => parseInt(parseFloat(x).toString(), 10));
     const c = e.codes;
     const mine = {
-      H: c.filter(x => x.toUpperCase() === "H").length, // 'h' (BA) is counted in system Hadir
+      H: c.filter(x => x.toUpperCase() === "H").length,
       I: c.filter(x => x.toUpperCase() === "I").length,
       A: c.filter(x => x.toUpperCase() === "A").length,
       O: c.filter(x => x.toUpperCase() === "O").length,
@@ -326,7 +326,7 @@ export function cekSilangSistem(data: TimesheetData): string[] {
 }
 
 /**
- * Detect unfinalized days (hari berjalan) where system didn't count 'A' in system total yet.
+ * Detect unfinalized days (hari berjalan)
  */
 export function analisisHariBerjalan(
   timesheets: TimesheetData[],
@@ -349,6 +349,7 @@ export function analisisHariBerjalan(
       const d = data.dates[idx];
       if (!d) break;
       const iso = toISODate(d);
+      if (!iso) break;
 
       for (const e of data.emps) {
         const sv = e.sys;
@@ -373,8 +374,7 @@ export function analisisHariBerjalan(
   const hasil: Record<string, [number, number]> = {};
   if (semuaTgl.length === 0) return hasil;
 
-  // Sort dates descending
-  const sortedDates = Array.from(new Set(semuaTgl.map(d => toISODate(d)))).sort().reverse();
+  const sortedDates = Array.from(new Set(semuaTgl.map(d => toISODate(d)).filter(Boolean))).sort().reverse();
 
   for (const iso of sortedDates) {
     if (!tot[iso]) break;
@@ -424,7 +424,7 @@ export function potongData(data: TimesheetData, d0: Date, d1: Date): { data: Tim
       codes: newCodes,
       g_hari: newGHari,
       g: newGHari.length,
-      sys: [], // system totals not valid for sliced range
+      sys: [],
     };
   });
 
@@ -449,7 +449,7 @@ export function potongData(data: TimesheetData, d0: Date, d1: Date): { data: Tim
 export function labelHari(data: TimesheetData, i: number): string {
   const d = data.dates[i];
   if (d) {
-    const dayName = HARI[(d.getDay() + 6) % 7]; // 0=Monday in HARI
+    const dayName = HARI[(d.getDay() + 6) % 7];
     return `${dayName} ${d.getDate()} ${BLN[d.getMonth()]}`;
   }
   return data.day_labels[i] || "";
@@ -487,7 +487,7 @@ export function hitungRekapProject(data: TimesheetData): RekapProjectData {
         tot.H += 1;
       } else if (kd === "h") {
         tot.BA += 1;
-        tot.H += 1; // 'h' (BA diterima) is also counted in Hadir!
+        tot.H += 1;
       } else if (up === "I" || up === "IR") {
         tot.IZIN += 1;
       } else if (up === "S" || up === "SR") {
@@ -495,7 +495,7 @@ export function hitungRekapProject(data: TimesheetData): RekapProjectData {
       } else if (up === "A") {
         tot.A += 1;
         if (kd === "a") {
-          tot.BAT += 1; // 'a' kecil = BA ditolak (also counted in Alfa)
+          tot.BAT += 1;
         }
       } else if (up === "O") {
         tot.OFF += 1;
@@ -543,7 +543,6 @@ export function cocokkan(
   const hasil: Record<number, [number, string]> = {};
   const pakai = new Set<number>();
 
-  // 1. Alias manual
   const aliasNorm: Record<string, string> = {};
   Object.keys(ALIAS).forEach(k => {
     aliasNorm[norm(k)] = ALIAS[k];
@@ -560,7 +559,6 @@ export function cocokkan(
     }
   });
 
-  // 2. Exact match
   projects.forEach((p, i) => {
     if (i in hasil) return;
     const n = norm(p.nama);
@@ -571,7 +569,6 @@ export function cocokkan(
     }
   });
 
-  // 3. Fuzzy match (>= 85%)
   const kandidat: [number, number, number][] = [];
   projects.forEach((p, i) => {
     if (i in hasil) return;
@@ -626,14 +623,12 @@ export function ekstraksiCekAbsensi(
         if (kodeAsli === "h") {
           kategori = "BA";
         } else if (kodeAsli === "a") {
-          // 'a' kecil = remains Alfa AND also recorded as BA rejected
           kejadian.push([label, kodeAsli, "BA"]);
           kategori = "ALFA";
         } else if (up in KODE_MAP) {
           kategori = KODE_MAP[up];
         }
 
-        // Avoid double counting lembur from codes when G is tracked via bottom row
         if (kategori === "LEMBUR") {
           continue;
         }
@@ -643,7 +638,6 @@ export function ekstraksiCekAbsensi(
         }
       }
 
-      // Add Overtime (G) from bottom row
       if (e.g > 0) {
         const datesG = projectGPeta[e.nik] || e.g_hari.map(idx => labelHari(data, idx));
         if (datesG.length === e.g) {
@@ -680,10 +674,7 @@ const POLA_KATEGORI: Record<string, "ALFA" | "SAKIT" | "IZIN"> = {
 };
 
 /**
- * Detect patterns needing follow-up:
- * - Beruntun: >= POLA_MIN_BERUNTUN (3) consecutive days
- * - Mengapit Off: same category immediately before and after Off days (e.g. A, O, A)
- * - Sering: >= POLA_MIN_FREKUENSI (3) occurrences in period
+ * Detect patterns needing follow-up
  */
 export function hitungPola(
   karyawan: KaryawanCek[],
@@ -772,7 +763,6 @@ export function hitungPola(
     }
   }
 
-  // Sort: -polaCount, -jumlah, project, nama
   hasil.sort((a, b) => {
     if (b.polaCount !== a.polaCount) return b.polaCount - a.polaCount;
     if (b.jumlah !== a.jumlah) return b.jumlah - a.jumlah;
@@ -893,7 +883,6 @@ export function bangunPaketPic(
   for (const [proyek, daftar] of Object.entries(perProyek)) {
     const aman = namaAman(proyek);
 
-    // Calculate totals & incidents per employee
     const tot = {
       ALFA: 0,
       SAKIT: 0,
@@ -918,7 +907,6 @@ export function bangunPaketPic(
       if (hasEvent) nKejadian++;
     }
 
-    // Build Pola Tindak Lanjut for ALFA, SAKIT, IZIN
     const tlBaris: [number, string, string, string, string, number, string, string][] = [];
     const tlNuc = new Set<string>();
 

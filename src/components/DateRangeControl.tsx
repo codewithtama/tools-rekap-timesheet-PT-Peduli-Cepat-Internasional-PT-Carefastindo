@@ -23,18 +23,24 @@ export const DateRangeControl: React.FC<DateRangeControlProps> = ({
   prosesSemua,
   onToggleSemua,
 }) => {
-  const datesBelumFinal = Object.keys(hariBelumFinal).sort();
+  const datesBelumFinal = hariBelumFinal ? Object.keys(hariBelumFinal).sort() : [];
   const hasHariBerjalan = datesBelumFinal.length > 0;
 
   let totalA = 0;
   let totalTdk = 0;
-  datesBelumFinal.forEach(iso => {
-    totalA += hariBelumFinal[iso][0];
-    totalTdk += hariBelumFinal[iso][1];
-  });
+  if (hariBelumFinal) {
+    datesBelumFinal.forEach(iso => {
+      if (hariBelumFinal[iso]) {
+        totalA += hariBelumFinal[iso][0];
+        totalTdk += hariBelumFinal[iso][1];
+      }
+    });
+  }
 
   const namaTglBelumFinal =
-    datesBelumFinal.length === 1
+    datesBelumFinal.length === 0
+      ? ""
+      : datesBelumFinal.length === 1
       ? tglId(parseISODate(datesBelumFinal[0]))
       : `${tglId(parseISODate(datesBelumFinal[0]))} s/d ${tglId(
           parseISODate(datesBelumFinal[datesBelumFinal.length - 1])
@@ -75,17 +81,17 @@ export const DateRangeControl: React.FC<DateRangeControlProps> = ({
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Periode Terdeteksi Sistem
+              Periode Absensi Terbaca
             </div>
             <div className="text-sm font-bold text-slate-800">
-              {tglId(awal)} s/d {tglId(akhir)}
+              {tglId(awal)} sampai {tglId(akhir)}
               <span className="ml-2 font-normal text-xs text-slate-500">
-                ({jmlHari(awal, akhir)} hari)
+                ({jmlHari(awal, akhir)} hari kalender)
               </span>
             </div>
             {isDipotong && (
               <div className="text-xs text-blue-700 font-medium mt-0.5">
-                Dipakai: {tglId(dariTanggal)} s/d {tglId(sampaiTanggal)} ({jmlHari(dariTanggal, sampaiTanggal)} hari)
+                Dipakai: {tglId(dariTanggal)} sampai {tglId(sampaiTanggal)} ({jmlHari(dariTanggal, sampaiTanggal)} hari kerja)
               </div>
             )}
           </div>
@@ -122,14 +128,14 @@ export const DateRangeControl: React.FC<DateRangeControlProps> = ({
           <button
             type="button"
             onClick={onToggleSemua}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               prosesSemua
                 ? "bg-blue-900 text-white border-blue-900 shadow-xs"
                 : "bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100"
             }`}
           >
             {prosesSemua && <Check className="w-3.5 h-3.5" />}
-            Proses Seluruh Periode (--semua)
+            Proses Seluruh Hari Apa Adanya
           </button>
         </div>
       </div>
@@ -140,11 +146,11 @@ export const DateRangeControl: React.FC<DateRangeControlProps> = ({
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <span className="font-semibold">
-              Perhatian: Tanggal {namaTglBelumFinal} terdeteksi belum ditutup sistem (hari berjalan).
+              Perhatian: Tanggal {namaTglBelumFinal} tampaknya belum ditutup oleh sistem (masih hari berjalan).
             </span>
             <p className="text-[11px] text-amber-800 leading-relaxed">
-              {totalTdk} dari {totalA} kode A pada tanggal itu belum dihitung oleh total bawaan sistem, sehingga kemungkinan besar bukan Alfa sungguhan.
-              Filter &quot;Sampai&quot; secara otomatis diarahkan ke tanggal final terakhir ({tglId(sampaiTanggal)}).
+              {totalTdk} dari {totalA} kode A di tanggal tersebut belum dihitung ke total bawaan sistem, jadi kemungkinan besar belum tentu Alfa sungguhan.
+              Batas tanggal akhir otomatis diarahkan ke tanggal final terakhir ({tglId(sampaiTanggal)}).
             </p>
           </div>
         </div>

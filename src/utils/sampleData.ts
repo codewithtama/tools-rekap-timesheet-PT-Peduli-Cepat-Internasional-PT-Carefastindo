@@ -38,7 +38,6 @@ export function generateSampleHtmlTimesheet(
   let rowsHtml = "";
   employees.forEach((emp, index) => {
     const no = index + 1;
-    // Calculate sample system totals for cross check simulation
     const H = emp.codes.filter(c => c.toUpperCase() === "H").length;
     const I = emp.codes.filter(c => c.toUpperCase() === "I").length;
     const A = emp.codes.filter(c => c.toUpperCase() === "A").length;
@@ -48,7 +47,6 @@ export function generateSampleHtmlTimesheet(
     const SR = emp.codes.filter(c => c.toUpperCase() === "SR").length;
     const IR = emp.codes.filter(c => c.toUpperCase() === "IR").length;
 
-    // Row 1: No, NIK, Jabatan, codes, sys totals (H, I, A, G, O, S, SR, IR), Keterangan
     const codeCells = emp.codes.map(c => `<td>${c}</td>`).join("");
     const sysCells = `<td>${H}</td><td>${I}</td><td>${A}</td><td>${G}</td><td>${O}</td><td>${S}</td><td>${SR}</td><td>${IR}</td>`;
     rowsHtml += `<tr>
@@ -60,7 +58,6 @@ export function generateSampleHtmlTimesheet(
       <td>${emp.ket || "-"}</td>
     </tr>`;
 
-    // Row 2 (Sub-row): Empty first cell, Employee Name in 2nd cell, Overtime G codes in date columns
     const gCells = days.map((_, i) => {
       if (emp.g_days && emp.g_days.includes(i)) {
         return `<td>G</td>`;
@@ -113,9 +110,6 @@ export function generateSampleHtmlTimesheet(
 }
 
 export function getSampleTimesheets(): SampleTimesheet[] {
-  // Period: 2026-10-15 to 2026-10-21 (7 days: Thu, Fri, Sat, Sun, Mon, Tue, Wed)
-  // Day indices: 0=15, 1=16, 2=17, 3=18(Sun), 4=19, 5=20, 6=21
-
   const p1Employees = [
     {
       nik: "0901010601",
@@ -127,21 +121,18 @@ export function getSampleTimesheets(): SampleTimesheet[] {
       nik: "0901010602",
       nama: "BAMBANG HERMANTO",
       jab: "Danru Security",
-      // Pattern: Mengapit Off (A, O, A)
       codes: ["H", "H", "A", "O", "A", "H", "H"],
     },
     {
       nik: "0901010603",
       nama: "DEDI KURNIAWAN",
       jab: "Anggota Security",
-      // Pattern: Beruntun Alfa (3 days)
       codes: ["A", "A", "A", "O", "H", "H", "H"],
     },
     {
       nik: "0901010604",
       nama: "EKO PRASETYO",
       jab: "Anggota Security",
-      // Overtime G on off day
       codes: ["H", "H", "H", "O", "H", "H", "H"],
       g_days: [3],
     },
@@ -149,7 +140,6 @@ export function getSampleTimesheets(): SampleTimesheet[] {
       nik: "0901010605",
       nama: "FERI GUNAWAN",
       jab: "Cleaning Service",
-      // BA Accepted (h) and BA Rejected (a)
       codes: ["H", "h", "H", "O", "H", "a", "H"],
       ket: "Pengajuan BA Kehadiran",
     },
@@ -157,7 +147,6 @@ export function getSampleTimesheets(): SampleTimesheet[] {
       nik: "0901010606",
       nama: "GITA PERMATASARI",
       jab: "Receptionist",
-      // Pattern: Sering Sakit (3 days)
       codes: ["S", "S", "H", "O", "S", "H", "H"],
     },
     {
@@ -185,7 +174,6 @@ export function getSampleTimesheets(): SampleTimesheet[] {
       nik: "0901012002",
       nama: "KUSNADI",
       jab: "Anggota Security",
-      // Overtime Ganti (2 days)
       codes: ["H", "H", "H", "H", "O", "H", "H"],
       g_days: [4],
     },
@@ -193,14 +181,12 @@ export function getSampleTimesheets(): SampleTimesheet[] {
       nik: "0901012003",
       nama: "LUKMAN HAKIM",
       jab: "Cleaning Service",
-      // Pattern: Sering Izin (3 times: I, IR, I)
       codes: ["I", "IR", "H", "H", "O", "I", "H"],
     },
     {
       nik: "0901012004",
       nama: "MUHAMMAD RIDWAN",
       jab: "Gardener",
-      // BA Accepted (h)
       codes: ["H", "H", "h", "H", "O", "H", "H"],
     },
     {
@@ -222,14 +208,12 @@ export function getSampleTimesheets(): SampleTimesheet[] {
       nik: "0901011502",
       nama: "PANJI SAPUTRA",
       jab: "Danru Security",
-      // Mengapit Off Sakit (S, O, S)
       codes: ["H", "H", "S", "O", "S", "H", "H"],
     },
     {
       nik: "0901011503",
       nama: "RUDI HARTONO",
       jab: "Anggota Security",
-      // BA Rejected (a)
       codes: ["H", "H", "H", "O", "a", "H", "H"],
     },
     {

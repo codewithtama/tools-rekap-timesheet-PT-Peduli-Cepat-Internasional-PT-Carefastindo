@@ -30,10 +30,10 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div>
             <h1 className="text-base font-bold tracking-tight text-slate-900 whitespace-nowrap">
-              Sistem Proses Absensi &amp; Paket PIC
+              Pengolahan Absensi &amp; Paket PIC Proyek
             </h1>
             <p className="text-xs text-slate-500 whitespace-nowrap">
-              HRD &amp; Personalia PT Peduli Cepat Internasional
+              Divisi HRD &amp; Personalia · PT Peduli Cepat Internasional
             </p>
           </div>
         </div>
@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
           <nav className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
             <button
               onClick={() => setActiveStep(1)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
                 activeStep === 1
                   ? "bg-white text-blue-900 shadow-xs font-semibold"
                   : "text-slate-600 hover:text-slate-900"
@@ -53,32 +53,32 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
             <button
               onClick={() => setActiveStep(2)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
                 activeStep === 2
                   ? "bg-white text-blue-900 shadow-xs font-semibold"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              2. Ringkasan Summary
+              2. Rekap Summary
               {!templateLoaded && (
                 <span className="ml-1 text-[10px] text-amber-600 font-normal">
-                  (Lewati)
+                  (Dilewati)
                 </span>
               )}
             </button>
             <button
               onClick={() => setActiveStep(3)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
                 activeStep === 3
                   ? "bg-white text-blue-900 shadow-xs font-semibold"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              3. Cek Absensi (5 Kategori)
+              3. Cek Ketidakhadiran
             </button>
             <button
               onClick={() => setActiveStep(4)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer ${
                 activeStep === 4
                   ? "bg-white text-blue-900 shadow-xs font-semibold"
                   : "text-slate-600 hover:text-slate-900"
@@ -94,29 +94,29 @@ export const Header: React.FC<HeaderProps> = ({
           {!hasData ? (
             <button
               onClick={onLoadSample}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-900 rounded-lg hover:bg-blue-800 transition-colors shadow-xs whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-900 rounded-lg hover:bg-blue-800 transition-colors shadow-xs whitespace-nowrap cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Muat Contoh Data
+              Coba Contoh Data
             </button>
           ) : (
             <>
               {onDownloadAllMasterZip && (
                 <button
                   onClick={onDownloadAllMasterZip}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-900 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors whitespace-nowrap"
-                  title="Unduh semua file rekap, summary, cek kategori, dan paket PIC dalam 1 file ZIP"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-900 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors whitespace-nowrap cursor-pointer"
+                  title="Unduh seluruh file rekap, summary, cek ketidakhadiran, dan paket PIC dalam satu arsip ZIP"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Unduh Master ZIP
+                  Unduh Semua File (ZIP)
                 </button>
               )}
               <button
                 onClick={onReset}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                Mulai Baru
+                Mulai Ulang
               </button>
             </>
           )}

@@ -7,11 +7,11 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Header } from "./components/Header";
 import { FileUploadZone } from "./components/FileUploadZone";
 import { DateRangeControl } from "./components/DateRangeControl";
+import { AttendanceAnalyticsBanner } from "./components/AttendanceAnalyticsBanner";
 import { StepKonversiView } from "./components/StepKonversiView";
 import { StepSummaryView } from "./components/StepSummaryView";
 import { StepCekAbsensiView } from "./components/StepCekAbsensiView";
 import { StepPaketPicView } from "./components/StepPaketPicView";
-import { AttendanceAnalyticsBanner } from "./components/AttendanceAnalyticsBanner";
 import { TimesheetData, RekapProjectData, KaryawanCek, PicPackage } from "./types/attendance";
 import {
   parseTimesheet,
@@ -22,6 +22,7 @@ import {
   bangunPaketPic,
   periodeJudul,
   tglId,
+  parseISODate,
 } from "./utils/attendanceEngine";
 import { getSampleTimesheets } from "./utils/sampleData";
 import {
@@ -30,7 +31,6 @@ import {
   buildCekKategoriXlsx,
   buildMasterZip,
   downloadBlob,
-  buildDefaultTemplateBlob,
 } from "./utils/excelExporter";
 import {
   FileSpreadsheet,
@@ -40,7 +40,6 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2,
 } from "lucide-react";
 
 export default function App() {
@@ -91,10 +90,9 @@ export default function App() {
       return customRange;
     }
 
-    // Default: if hari berjalan detected, cut back to safe day
-    const datesBelum = Object.keys(hariBelumFinal).sort();
-    if (datesBelum.length > 0) {
-      const earliestUnclosed = new Date(datesBelum[0]);
+    const datesBelum = hariBelumFinal ? Object.keys(hariBelumFinal).sort() : [];
+    if (datesBelum.length > 0 && datesBelum[0]) {
+      const earliestUnclosed = parseISODate(datesBelum[0]);
       earliestUnclosed.setDate(earliestUnclosed.getDate() - 1);
       if (earliestUnclosed >= detectedPeriod.awal) {
         return { dari: detectedPeriod.awal, sampai: earliestUnclosed };
@@ -124,7 +122,6 @@ export default function App() {
 
   // Step 3 Data: Anomaly Checking
   const karyawanCek = useMemo<KaryawanCek[]>(() => {
-    // Collect g_peta per file
     const gPeta: Record<string, Record<string, string[]>> = {};
     effectiveTimesheets.forEach(ts => {
       gPeta[ts.fileName] = {};
@@ -141,9 +138,8 @@ export default function App() {
     return ekstraksiCekAbsensi(effectiveTimesheets, gPeta);
   }, [effectiveTimesheets]);
 
-  // Unclosed days set in ISO format
   const hariBelumFinalSet = useMemo<Set<string>>(() => {
-    if (prosesSemua) return new Set();
+    if (prosesSemua || !hariBelumFinal) return new Set();
     return new Set(Object.keys(hariBelumFinal));
   }, [hariBelumFinal, prosesSemua]);
 
@@ -159,12 +155,10 @@ export default function App() {
     return `${d0}-${d1}`;
   }, [effectiveRange]);
 
-  // Step 4 Data: PIC Packages
   const picPackages = useMemo<PicPackage[]>(() => {
     return bangunPaketPic(karyawanCek, periodeTxt, hariBelumFinalSet);
   }, [karyawanCek, periodeTxt, hariBelumFinalSet]);
 
-  // Cache for Rekap Blobs
   const [rekapBlobs, setRekapBlobs] = useState<Record<string, Blob>>({});
 
   useEffect(() => {
@@ -190,7 +184,6 @@ export default function App() {
     };
   }, [effectiveTimesheets]);
 
-  // Handler: Load Preloaded Sample Timesheets
   const handleLoadSample = () => {
     setIsLoading(true);
     const samples = getSampleTimesheets();
@@ -205,7 +198,6 @@ export default function App() {
     }, 400);
   };
 
-  // Handler: Reset Application
   const handleReset = () => {
     setTimesheetsRaw([]);
     setTemplateLoaded(false);
@@ -215,7 +207,6 @@ export default function App() {
     setActiveStep(1);
   };
 
-  // Handler: User Uploads Timesheet Files
   const handleFilesSelected = async (files: File[]) => {
     setIsLoading(true);
     const newItems: { name: string; content: string }[] = [];
@@ -234,30 +225,25 @@ export default function App() {
     setIsLoading(false);
   };
 
-  // Handler: User Uploads Template File
   const handleTemplateSelected = (file: File) => {
     setTemplateLoaded(true);
     setTemplateFileName(file.name);
   };
 
-  // Handler: User Activates Default Template
   const handleActivateDefaultTemplate = async () => {
     setTemplateLoaded(true);
     setTemplateFileName("SUMMARY_ABSENSI_TEMPLATE.xlsx (Default)");
   };
 
-  // Handler: Download Master ZIP
   const handleDownloadMasterZip = async () => {
     if (!effectiveRange) return;
     setIsLoading(true);
     try {
-      // 1. Summary Blob
       let summaryBlob: Blob | null = null;
       if (templateLoaded) {
         summaryBlob = await buildSummaryXlsx(rekapProjects, effectiveRange.dari, effectiveRange.sampai);
       }
 
-      // 2. 5 Cek Blobs
       const cekBlobs: { name: string; blob: Blob }[] = [];
       const kats: ("ALFA" | "SAKIT" | "IZIN" | "LEMBUR" | "BA")[] = [
         "ALFA", "SAKIT", "IZIN", "LEMBUR", "BA"
@@ -268,10 +254,8 @@ export default function App() {
         cekBlobs.push({ name: `CEK_${kat}_${stempel}.xlsx`, blob: b });
       }
 
-      // 3. Rekap Blobs list
       const rekapList = Object.entries(rekapBlobs).map(([safeName, blob]) => ({ safeName, blob }));
 
-      // 4. Build Master Zip
       const masterBlob = await buildMasterZip(
         picPackages,
         periodeTxt,
@@ -305,7 +289,6 @@ export default function App() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
-        {/* Upload & Dropzone Area */}
         <FileUploadZone
           onFilesSelected={handleFilesSelected}
           onTemplateSelected={handleTemplateSelected}
@@ -314,7 +297,6 @@ export default function App() {
           timesheetCount={parsedTimesheets.length}
         />
 
-        {/* Date Range Controller (if period is detected) */}
         {detectedPeriod && effectiveRange && (
           <DateRangeControl
             awal={detectedPeriod.awal}
@@ -334,19 +316,25 @@ export default function App() {
           />
         )}
 
-        {/* Loading Overlay */}
+        {/* Real-Time Attendance Analytics Banner (Recharts) */}
+        {hasData && !isLoading && (
+          <AttendanceAnalyticsBanner
+            projects={rekapProjects}
+            effectiveRange={effectiveRange}
+          />
+        )}
+
         {isLoading && (
           <div className="p-8 text-center bg-white border border-slate-200 rounded-xl my-6 shadow-xs animate-pulse">
             <p className="text-sm font-semibold text-blue-900">
-              Memproses data absensi karyawan...
+              Sedang merapikan data absensi karyawan...
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Mengekstrak shift harian, lembur, dan mendeteksi pola absensi.
+              Membaca shift kerja harian, lembur ganti, dan memeriksa pola kehadiran.
             </p>
           </div>
         )}
 
-        {/* Empty State when no timesheet loaded */}
         {!hasData && !isLoading && (
           <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-12 text-center shadow-xs">
             <div className="max-w-2xl mx-auto space-y-6">
@@ -356,14 +344,13 @@ export default function App() {
 
               <div>
                 <h2 className="text-xl font-bold text-slate-900">
-                  Alur Kerja Absensi 4-in-1 Otomatis
+                  Alur Praktis Rekap Absensi &amp; PIC Lapangan
                 </h2>
                 <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                  Unggah file timesheet (.xls hasil download sistem) di atas atau gunakan data contoh untuk melihat alur kerja lengkap tanpa mengubah satu pun logika perhitungan bawaan.
+                  Tarik file timesheet (.xls hasil unduh dari sistem absensi) di atas untuk langsung mengolah data rekap, cek silang ketidakhadiran, dan menyiapkan draf pesan untuk PIC proyek.
                 </p>
               </div>
 
-              {/* 4 Steps Explanation Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left pt-4">
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
                   <div className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
@@ -371,27 +358,27 @@ export default function App() {
                     1. Konversi Timesheet
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Ubah timesheet sistem menjadi <code>Rekap-Absensi-*.xlsx</code> dengan rumus Excel dan format rapi.
+                    Ubah timesheet mentah dari sistem menjadi <code>Rekap-Absensi-*.xlsx</code> lengkap dengan rumus otomatis dan format siap pakai.
                   </p>
                 </div>
 
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
                   <div className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
                     <Layers className="w-4 h-4" />
-                    2. Buat Summary
+                    2. Rekap Summary Proyek
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Ringkas semua proyek ke 13 kolom template standar lengkap dengan Grand Total dan pencocokan nama.
+                    Gabungkan semua data proyek ke dalam format summary 13 kolom, lengkap dengan Grand Total dan pengecekan nama proyek.
                   </p>
                 </div>
 
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
                   <div className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
                     <Search className="w-4 h-4" />
-                    3. Cek Absensi
+                    3. Cek Ketidakhadiran
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Pisahkan Alfa, Sakit, Izin, Lembur, dan BA (h/a) serta deteksi pola beruntun dan apit Off.
+                    Periksa catatan Alfa, Sakit, Izin, Lembur, serta Berita Acara (BA), lengkap dengan deteksi pola absensi berulang.
                   </p>
                 </div>
 
@@ -401,7 +388,7 @@ export default function App() {
                     4. Paket PIC Proyek
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Satu paket per proyek berisi file Excel, Rekap, dan draft pesan WhatsApp siap tempel ke PIC.
+                    Otomatis menghasilkan arsip per proyek berisi file Excel rekap dan draf pesan yang tinggal disalin ke WhatsApp PIC.
                   </p>
                 </div>
               </div>
@@ -409,10 +396,10 @@ export default function App() {
               <div className="pt-4 flex items-center justify-center gap-3">
                 <button
                   onClick={handleLoadSample}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-blue-900 hover:bg-blue-800 rounded-xl transition-all shadow-xs"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-blue-900 hover:bg-blue-800 rounded-xl transition-all shadow-xs cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4" />
-                  Coba Sekarang dengan Contoh Data
+                  Coba Pakai Contoh Data
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </button>
               </div>
@@ -420,12 +407,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Real-Time Attendance Analytics Banner (Recharts) */}
-        {hasData && !isLoading && (
-          <AttendanceAnalyticsBanner projects={rekapProjects} />
-        )}
-
-        {/* Active Step Views */}
         {hasData && !isLoading && (
           <div className="space-y-6">
             {activeStep === 1 && <StepKonversiView timesheets={effectiveTimesheets} />}
@@ -458,17 +439,16 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>
-              Logika absensi, rumus perhitungan, dan deteksi pola 100% identik dengan script <code>proses_absensi.py</code>.
+              Rumus hitungan, penyesuaian hari kerja, dan deteksi pola absensi 100% mengikuti standar <code>proses_absensi.py</code>.
             </span>
           </div>
           <div>
-            PT Peduli Cepat Internasional · HRD &amp; Personalia
+            Divisi HRD &amp; Personalia · PT Peduli Cepat Internasional
           </div>
         </div>
       </footer>
