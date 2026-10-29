@@ -1,15 +1,12 @@
 import React, { useState, useMemo } from "react";
-import {
-  Download,
-  Activity,
-  Search,
-  X,
-  Filter,
-  SearchX,
-} from "lucide-react";
+import { Download, Activity, Search, X, Filter } from "lucide-react";
 import { KaryawanCek, KATEGORI_FILE } from "../types/attendance";
 import { hitungPola } from "../utils/attendanceEngine";
 import { buildCekKategoriXlsx, downloadBlob } from "../utils/excelExporter";
+import { CekSummaryKaryawanTable, SummaryKaryawanRow } from "./cek-absensi/CekSummaryKaryawanTable";
+import { CekDetailKejadianTable, DetailKejadianRow } from "./cek-absensi/CekDetailKejadianTable";
+import { CekSummaryProjectTable } from "./cek-absensi/CekSummaryProjectTable";
+import { CekTindakLanjutTable } from "./cek-absensi/CekTindakLanjutTable";
 
 interface StepCekAbsensiViewProps {
   karyawan: KaryawanCek[];
@@ -53,8 +50,8 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
   const cleanQuery = searchQuery.trim().toLowerCase();
 
   // 1. Raw Data for Summary Karyawan
-  const allSummaryKaryawanRows = useMemo(() => {
-    const rows: any[] = [];
+  const allSummaryKaryawanRows = useMemo<SummaryKaryawanRow[]>(() => {
+    const rows: SummaryKaryawanRow[] = [];
     karyawan.forEach(k => {
       let ev = k.kejadian.filter(e => e[2] === activeKat);
 
@@ -108,8 +105,8 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
   }, [allSummaryKaryawanRows, cleanQuery]);
 
   // 2. Raw Data for Detail Kejadian
-  const allDetailRows = useMemo(() => {
-    const rows: any[] = [];
+  const allDetailRows = useMemo<DetailKejadianRow[]>(() => {
+    const rows: DetailKejadianRow[] = [];
     karyawan.forEach(k => {
       let ev = k.kejadian.filter(e => e[2] === activeKat);
 
@@ -360,340 +357,43 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
 
         {/* View 1: Summary Karyawan */}
         {subTab === "summary" && (
-          <div className="overflow-x-auto max-h-[500px]">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-[#1F3864] text-white sticky top-0 z-10 select-none">
-                <tr>
-                  <th className="px-2.5 py-2 border border-slate-400 text-center w-10">No</th>
-                  <th className="px-3 py-2 border border-slate-400 text-center w-28">NUC</th>
-                  <th className="px-3 py-2 border border-slate-400 text-left min-w-[180px]">Nama</th>
-                  <th className="px-3 py-2 border border-slate-400 text-left min-w-[140px]">Jabatan</th>
-                  <th className="px-3 py-2 border border-slate-400 text-left min-w-[180px]">Project</th>
-                  {activeKat === "BA" ? (
-                    <>
-                      <th className="px-2.5 py-2 border border-slate-400 text-center w-24">BA Diterima (h)</th>
-                      <th className="px-2.5 py-2 border border-slate-400 text-center w-24">BA Ditolak (a)</th>
-                      <th className="px-2.5 py-2 border border-slate-400 text-center w-20">Total BA</th>
-                    </>
-                  ) : (
-                    <th className="px-2.5 py-2 border border-slate-400 text-center w-20">Jumlah</th>
-                  )}
-                  <th className="px-3 py-2 border border-slate-400 text-left min-w-[200px]">Tanggal Kejadian</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredSummaryKaryawanRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center bg-slate-50/50">
-                      <div className="max-w-md mx-auto space-y-2">
-                        <SearchX className="w-6 h-6 text-slate-400 mx-auto" />
-                        <p className="text-xs font-semibold text-slate-700">
-                          {searchQuery
-                            ? `Tidak ada karyawan yang cocok dengan pencarian "${searchQuery}".`
-                            : `Tidak ada catatan ${activeKat} pada periode ini.`}
-                        </p>
-                        {searchQuery && (
-                          <button
-                            onClick={handleResetSearch}
-                            className="mt-2 px-3 py-1.5 text-xs font-medium text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                          >
-                            Reset Pencarian
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredSummaryKaryawanRows.map((r, i) => (
-                    <tr key={i} className={i % 2 === 1 ? "bg-slate-50/50 hover:bg-blue-50/30" : "bg-white hover:bg-blue-50/30"}>
-                      <td className="px-2.5 py-1.5 border border-slate-200 text-center font-mono text-[11px] text-slate-500">
-                        {i + 1}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 font-mono text-slate-700">
-                        {r.nuc}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 font-medium text-slate-900">
-                        {r.nama}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 text-slate-600">
-                        {r.jabatan}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 text-slate-800">
-                        {r.project}
-                      </td>
-                      {activeKat === "BA" ? (
-                        <>
-                          <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-sky-800 bg-sky-50/30 tabular-nums">
-                            {r.baH}
-                          </td>
-                          <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-rose-800 bg-rose-50/30 tabular-nums">
-                            {r.baA}
-                          </td>
-                          <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-slate-900 tabular-nums">
-                            {r.total}
-                          </td>
-                        </>
-                      ) : (
-                        <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-slate-900 tabular-nums">
-                          {r.total}
-                        </td>
-                      )}
-                      <td className="px-3 py-1.5 border border-slate-200 text-slate-600 text-[11px]">
-                        {r.tanggal}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <CekSummaryKaryawanTable
+            rows={filteredSummaryKaryawanRows}
+            activeKat={activeKat}
+            searchQuery={searchQuery}
+            onResetSearch={handleResetSearch}
+          />
         )}
 
         {/* View 2: Detail Kejadian */}
         {subTab === "detail" && (
-          <div className="overflow-x-auto max-h-[500px]">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-[#1F3864] text-white sticky top-0 z-10 select-none">
-                <tr>
-                  <th className="px-2.5 py-2 border border-slate-400 text-center w-10">No</th>
-                  <th className="px-3 py-2 border border-slate-400 text-center w-28">NUC</th>
-                  <th className="px-3 py-2 border border-slate-400 text-left min-w-[180px]">Nama</th>
-                  <th className="px-3 py-2 border border-slate-400 text-left min-w-[130px]">Jabatan</th>
-                  <th className="px-3 py-2 border border-slate-400 text-left min-w-[180px]">Project</th>
-                  <th className="px-3 py-2 border border-slate-400 text-center w-28">Tanggal</th>
-                  <th className="px-2.5 py-2 border border-slate-400 text-center w-16">Kode</th>
-                  {activeKat === "BA" && (
-                    <th className="px-3 py-2 border border-slate-400 text-left min-w-[140px]">Status</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredDetailRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center bg-slate-50/50">
-                      <div className="max-w-md mx-auto space-y-2">
-                        <SearchX className="w-6 h-6 text-slate-400 mx-auto" />
-                        <p className="text-xs font-semibold text-slate-700">
-                          {searchQuery
-                            ? `Tidak ada kejadian yang cocok dengan pencarian "${searchQuery}".`
-                            : "Tidak ada rincian tanggal kejadian pada kategori ini."}
-                        </p>
-                        {searchQuery && (
-                          <button
-                            onClick={handleResetSearch}
-                            className="mt-2 px-3 py-1.5 text-xs font-medium text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                          >
-                            Reset Pencarian
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredDetailRows.map((r, i) => (
-                    <tr key={i} className={i % 2 === 1 ? "bg-slate-50/50 hover:bg-blue-50/30" : "bg-white hover:bg-blue-50/30"}>
-                      <td className="px-2.5 py-1.5 border border-slate-200 text-center font-mono text-[11px] text-slate-500">
-                        {i + 1}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 font-mono text-slate-700">
-                        {r.nuc}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 font-medium text-slate-900">
-                        {r.nama}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 text-slate-600">
-                        {r.jabatan}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 text-slate-800">
-                        {r.project}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 text-center font-medium text-slate-800">
-                        {r.tanggal}
-                      </td>
-                      <td className="px-2.5 py-1.5 border border-slate-200 text-center font-mono font-bold text-blue-900">
-                        {r.kode}
-                      </td>
-                      {activeKat === "BA" && (
-                        <td className="px-3 py-1.5 border border-slate-200 font-semibold text-[11px]">
-                          <span
-                            className={
-                              r.kode === "h"
-                                ? "text-sky-700 bg-sky-50 px-2 py-0.5 rounded-sm"
-                                : "text-rose-700 bg-rose-50 px-2 py-0.5 rounded-sm"
-                            }
-                          >
-                            {r.status}
-                          </span>
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <CekDetailKejadianTable
+            rows={filteredDetailRows}
+            activeKat={activeKat}
+            searchQuery={searchQuery}
+            onResetSearch={handleResetSearch}
+          />
         )}
 
         {/* View 3: Summary Project */}
         {subTab === "project" && (
-          <div className="overflow-x-auto max-h-[500px]">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-[#1F3864] text-white sticky top-0 z-10 select-none">
-                <tr>
-                  <th className="px-2.5 py-2 border border-slate-400 text-center w-10">No</th>
-                  <th className="px-3 py-2 border border-slate-400 text-left min-w-[240px]">Project</th>
-                  <th className="px-3 py-2 border border-slate-400 text-center w-32">Jumlah Karyawan</th>
-                  {activeKat === "BA" ? (
-                    <>
-                      <th className="px-3 py-2 border border-slate-400 text-center w-28">BA Diterima (h)</th>
-                      <th className="px-3 py-2 border border-slate-400 text-center w-28">BA Ditolak (a)</th>
-                      <th className="px-3 py-2 border border-slate-400 text-center w-28">Total BA</th>
-                    </>
-                  ) : (
-                    <th className="px-3 py-2 border border-slate-400 text-center w-32">Total Kejadian</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {Object.keys(filteredPerProject).length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center bg-slate-50/50">
-                      <div className="max-w-md mx-auto space-y-2">
-                        <SearchX className="w-6 h-6 text-slate-400 mx-auto" />
-                        <p className="text-xs font-semibold text-slate-700">
-                          {searchQuery
-                            ? `Tidak ada proyek yang sesuai dengan pencarian "${searchQuery}".`
-                            : "Tidak ada data proyek pada kategori ini."}
-                        </p>
-                        {searchQuery && (
-                          <button
-                            onClick={handleResetSearch}
-                            className="mt-2 px-3 py-1.5 text-xs font-medium text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                          >
-                            Reset Pencarian
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  Object.entries(filteredPerProject).map(([proj, stats], i) => (
-                    <tr key={i} className={i % 2 === 1 ? "bg-slate-50/50 hover:bg-blue-50/30" : "bg-white hover:bg-blue-50/30"}>
-                      <td className="px-2.5 py-1.5 border border-slate-200 text-center font-mono text-[11px] text-slate-500">
-                        {i + 1}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 font-semibold text-slate-900">
-                        {proj}
-                      </td>
-                      <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums">
-                        {stats.karyawanSet.size}
-                      </td>
-                      {activeKat === "BA" ? (
-                        <>
-                          <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums text-sky-800 font-bold">
-                            {stats.baH || 0}
-                          </td>
-                          <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums text-rose-800 font-bold">
-                            {stats.baA || 0}
-                          </td>
-                          <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums font-bold text-slate-900">
-                            {stats.incidentCount}
-                          </td>
-                        </>
-                      ) : (
-                        <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums font-bold text-slate-900">
-                          {stats.incidentCount}
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <CekSummaryProjectTable
+            filteredPerProject={filteredPerProject}
+            activeKat={activeKat}
+            searchQuery={searchQuery}
+            onResetSearch={handleResetSearch}
+          />
         )}
 
         {/* View 4: Perlu Tindak Lanjut */}
         {subTab === "tindak_lanjut" && (
-          <div>
-            <div className="p-3 bg-rose-50 border-b border-rose-200 text-xs text-rose-900 leading-relaxed">
-              <strong>Kriteria Pola Khusus:</strong> Beruntun (minimal 3 hari berturut-turut), Mengapit Hari Off (libur rutin diapit ketidakhadiran), Sering (minimal 3 kali kejadian).
-              {hariBelumFinal.size > 0 && (
-                <span className="block mt-0.5 text-rose-800">
-                  Tanggal yang belum ditutup sistem (hari berjalan) diabaikan dari deteksi pola.
-                </span>
-              )}
-            </div>
-            <div className="overflow-x-auto max-h-[500px]">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead className="bg-[#1F3864] text-white sticky top-0 z-10 select-none">
-                  <tr>
-                    <th className="px-2.5 py-2 border border-slate-400 text-center w-10">No</th>
-                    <th className="px-3 py-2 border border-slate-400 text-center w-28">NUC</th>
-                    <th className="px-3 py-2 border border-slate-400 text-left min-w-[180px]">Nama</th>
-                    <th className="px-3 py-2 border border-slate-400 text-left min-w-[130px]">Jabatan</th>
-                    <th className="px-3 py-2 border border-slate-400 text-left min-w-[180px]">Project</th>
-                    <th className="px-2.5 py-2 border border-slate-400 text-center w-16">Jumlah</th>
-                    <th className="px-3 py-2 border border-slate-400 text-left w-36">Pola</th>
-                    <th className="px-3 py-2 border border-slate-400 text-left min-w-[280px]">Detail</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {filteredPolas.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="p-8 text-center bg-slate-50/50">
-                        <div className="max-w-md mx-auto space-y-2">
-                          <SearchX className="w-6 h-6 text-slate-400 mx-auto" />
-                          <p className="text-xs font-semibold text-slate-700">
-                            {searchQuery
-                              ? `Tidak ada pola tindak lanjut yang cocok dengan kata kunci "${searchQuery}".`
-                              : `Tidak ada pola ${activeKat} yang perlu ditindaklanjuti pada periode ini.`}
-                          </p>
-                          {searchQuery && (
-                            <button
-                              onClick={handleResetSearch}
-                              className="mt-2 px-3 py-1.5 text-xs font-medium text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                            >
-                              Reset Pencarian
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredPolas.map((p, idx) => (
-                      <tr key={idx} className={idx % 2 === 1 ? "bg-slate-50/50 hover:bg-blue-50/30" : "bg-white hover:bg-blue-50/30"}>
-                        <td className="px-2.5 py-2 border border-slate-200 text-center font-mono text-[11px] text-slate-500">
-                          {idx + 1}
-                        </td>
-                        <td className="px-3 py-2 border border-slate-200 font-mono text-slate-700">
-                          {p.nuc}
-                        </td>
-                        <td className="px-3 py-2 border border-slate-200 font-semibold text-slate-900">
-                          {p.nama}
-                        </td>
-                        <td className="px-3 py-2 border border-slate-200 text-slate-600">
-                          {p.jabatan}
-                        </td>
-                        <td className="px-3 py-2 border border-slate-200 text-slate-800">
-                          {p.project}
-                        </td>
-                        <td className="px-2.5 py-2 border border-slate-200 text-center font-bold text-rose-800 tabular-nums">
-                          {p.jumlah}
-                        </td>
-                        <td className="px-3 py-2 border border-slate-200 font-semibold text-rose-900 bg-rose-50/30">
-                          {p.pola}
-                        </td>
-                        <td className="px-3 py-2 border border-slate-200 text-slate-700 text-[11px] leading-relaxed">
-                          {p.detail}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <CekTindakLanjutTable
+            filteredPolas={filteredPolas}
+            activeKat={activeKat}
+            hariBelumFinalCount={hariBelumFinal.size}
+            searchQuery={searchQuery}
+            onResetSearch={handleResetSearch}
+          />
         )}
       </div>
     </div>
