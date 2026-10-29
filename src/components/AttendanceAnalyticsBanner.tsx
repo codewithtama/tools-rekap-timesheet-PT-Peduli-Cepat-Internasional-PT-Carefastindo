@@ -43,7 +43,7 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
       mp += p.mp;
       hadir += p.H;
       off += p.OFF;
-      alfa += p.A;
+      alfa += p.A; // p.A sudah mencakup kode A dan kode a (BA ditolak)
       sakit += p.SAKIT;
       izin += p.IZIN;
       lembur += p.G;
@@ -62,6 +62,10 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
     const attendanceRate =
       totalMandays > 0 ? Math.min(100, Math.round((hadir / totalMandays) * 1000) / 10) : 0;
 
+    // totalAnomali: total seluruh catatan kejadian harian unik
+    // (alfa sudah mencakup baA, hadir sudah mencakup baH, jadi baA tidak dihitung dua kali)
+    const totalAnomali = (alfa - baA) + baA + baH + sakit + izin + lembur;
+
     return {
       mp,
       hadir,
@@ -74,19 +78,20 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
       baA,
       durasiHari,
       attendanceRate,
-      totalAnomali: alfa + sakit + izin + lembur + baH + baA,
+      totalAnomali,
     };
   }, [projects, effectiveRange]);
 
-  // Data for Donut Chart
+  // Data for Donut Chart (Breakdown tanpa double-counting)
   const pieData = useMemo<PieChartItem[]>(() => {
+    const alfaMurni = Math.max(0, kpiTotals.alfa - kpiTotals.baA);
     const list = [
-      { name: "Alfa", value: kpiTotals.alfa, color: CATEGORY_COLORS.Alfa },
-      { name: "Sakit", value: kpiTotals.sakit, color: CATEGORY_COLORS.Sakit },
-      { name: "Izin", value: kpiTotals.izin, color: CATEGORY_COLORS.Izin },
-      { name: "Lembur", value: kpiTotals.lembur, color: CATEGORY_COLORS.Lembur },
-      { name: "BA Diterima", value: kpiTotals.baH, color: CATEGORY_COLORS["BA Diterima"] },
-      { name: "BA Ditolak", value: kpiTotals.baA, color: CATEGORY_COLORS["BA Ditolak"] },
+      { name: "Alfa Murni (A)", value: alfaMurni, color: CATEGORY_COLORS.Alfa },
+      { name: "BA Ditolak / Alfa (a)", value: kpiTotals.baA, color: CATEGORY_COLORS["BA Ditolak"] },
+      { name: "Sakit (S/SR)", value: kpiTotals.sakit, color: CATEGORY_COLORS.Sakit },
+      { name: "Izin (I/IR)", value: kpiTotals.izin, color: CATEGORY_COLORS.Izin },
+      { name: "Lembur Ganti (G)", value: kpiTotals.lembur, color: CATEGORY_COLORS.Lembur },
+      { name: "BA Diterima / Hadir (h)", value: kpiTotals.baH, color: CATEGORY_COLORS["BA Diterima"] },
     ];
     return list.filter(item => item.value > 0);
   }, [kpiTotals]);
@@ -98,7 +103,7 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
       return {
         fullName: p.nama,
         name: shortName,
-        Alfa: p.A,
+        Alfa: p.A, // Total Alfa (A + a)
         Sakit: p.SAKIT,
         Izin: p.IZIN,
         Lembur: p.G,
@@ -148,24 +153,26 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
 
       {/* Tri-Column Responsive Dashboard Grid (Collapsible) */}
       {showCharts && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1 border-t border-slate-100 animate-in fade-in duration-200">
-          {/* Kolom 1: Integrated Executive Summary Sidebar Card (4 cols) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-2 border-t border-slate-100">
+          {/* Column 1: Executive Summary Card */}
           <ExecutiveSummaryCard
             kpiTotals={kpiTotals}
             projects={projects}
             effectiveRange={effectiveRange}
           />
 
-          {/* Kolom 2: Donut Chart Distribusi Global (4 cols) */}
-          <AttendanceCategoryPieChart
-            pieData={pieData}
-            kpiTotals={kpiTotals}
-          />
+          {/* Column 2: Donut Chart - Porsi Ketidakhadiran & Lembur */}
+          <AttendanceCategoryPieChart pieData={pieData} kpiTotals={kpiTotals} />
 
-          {/* Kolom 3: Grouped Bar Chart Per Proyek (4 cols) */}
+          {/* Column 3: Stacked Bar Chart - Perbandingan Tiap Proyek */}
           <ProjectAttendanceBarChart
             barData={barData}
-            categoryColors={CATEGORY_COLORS}
+            categoryColors={{
+              Alfa: CATEGORY_COLORS.Alfa,
+              Sakit: CATEGORY_COLORS.Sakit,
+              Izin: CATEGORY_COLORS.Izin,
+              Lembur: CATEGORY_COLORS.Lembur,
+            }}
           />
         </div>
       )}

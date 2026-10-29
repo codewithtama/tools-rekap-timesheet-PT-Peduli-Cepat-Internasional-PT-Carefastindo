@@ -42,7 +42,9 @@ export const CekSummaryKaryawanTable: React.FC<CekSummaryKaryawanTableProps> = (
                 <th className="px-2.5 py-2 border border-slate-400 text-center w-20">Total BA</th>
               </>
             ) : (
-              <th className="px-2.5 py-2 border border-slate-400 text-center w-20">Jumlah</th>
+              <th className="px-2.5 py-2 border border-slate-400 text-center w-28">
+                {activeKat === "ALFA" ? "Total Alfa (A/a)" : "Jumlah"}
+              </th>
             )}
             <th className="px-3 py-2 border border-slate-400 text-left min-w-[200px]">Tanggal Kejadian</th>
           </tr>
@@ -50,7 +52,7 @@ export const CekSummaryKaryawanTable: React.FC<CekSummaryKaryawanTableProps> = (
         <tbody className="divide-y divide-slate-200">
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={8} className="p-8 text-center bg-slate-50/50">
+              <td colSpan={activeKat === "BA" ? 9 : 7} className="p-8 text-center bg-slate-50/50">
                 <div className="max-w-md mx-auto space-y-2">
                   <SearchX className="w-6 h-6 text-slate-400 mx-auto" />
                   <p className="text-xs font-semibold text-slate-700">
@@ -101,7 +103,12 @@ export const CekSummaryKaryawanTable: React.FC<CekSummaryKaryawanTableProps> = (
                   </>
                 ) : (
                   <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-slate-900 tabular-nums">
-                    {r.total}
+                    <div>{r.total}</div>
+                    {activeKat === "ALFA" && r.baA !== undefined && r.baA > 0 && (
+                      <div className="text-[10px] text-rose-700 font-normal leading-tight mt-0.5">
+                        ({r.baA} BA ditolak)
+                      </div>
+                    )}
                   </td>
                 )}
                 <td className="px-3 py-1.5 border border-slate-200 text-slate-600 text-[11px]">
@@ -115,4 +122,3 @@ export const CekSummaryKaryawanTable: React.FC<CekSummaryKaryawanTableProps> = (
     </div>
   );
 };
-

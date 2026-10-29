@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Download, Activity, Search, X, Filter } from "lucide-react";
+import { Download, Activity, Search, X, Filter, Info } from "lucide-react";
 import { KaryawanCek, KATEGORI_FILE } from "../types/attendance";
 import { hitungPola } from "../utils/attendanceEngine";
 import { buildCekKategoriXlsx, downloadBlob } from "../utils/excelExporter";
@@ -80,6 +80,20 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
           total: ev.length,
           tanggal: tgl,
         });
+      } else if (activeKat === "ALFA") {
+        const na = ev.filter(e => e[1] === "a").length;
+        const tgl = ev
+          .map(e => (e[1] === "a" ? `${e[0]} (a - BA ditolak)` : `${e[0]} (A)`))
+          .join(", ");
+        rows.push({
+          nuc: k.nuc,
+          nama: k.nama,
+          jabatan: k.jabatan,
+          project: k.project,
+          baA: na,
+          total: ev.length,
+          tanggal: tgl || "-",
+        });
       } else {
         const tgl = ev.map(e => e[0]).filter(t => t !== "-").join(", ");
         rows.push({
@@ -122,6 +136,8 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
         let status = "";
         if (activeKat === "BA") {
           status = kode === "h" ? "BA Diterima (Hadir)" : "BA Ditolak (Alfa)";
+        } else if (activeKat === "ALFA") {
+          status = kode === "a" ? "BA Ditolak (Tetap Alfa)" : "Alfa Murni";
         }
         rows.push({
           nuc: k.nuc,
@@ -291,71 +307,81 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
         </button>
       </div>
 
-      {/* Sub-view Switcher with Live Filtered Counts */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-        <div className="p-3 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setSubTab("summary")}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
-                subTab === "summary"
-                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Rekap Karyawan ({filteredSummaryKaryawanRows.length})
-            </button>
-            <button
-              onClick={() => setSubTab("detail")}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
-                subTab === "detail"
-                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Rincian Tanggal ({filteredDetailRows.length})
-            </button>
-            <button
-              onClick={() => setSubTab("project")}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
-                subTab === "project"
-                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Rekap per Proyek ({Object.keys(filteredPerProject).length})
-            </button>
-            {(activeKat === "ALFA" || activeKat === "SAKIT" || activeKat === "IZIN") && (
-              <button
-                onClick={() => setSubTab("tindak_lanjut")}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 cursor-pointer ${
-                  subTab === "tindak_lanjut"
-                    ? "bg-rose-100 text-rose-900 font-semibold shadow-2xs"
-                    : "text-rose-700 hover:bg-rose-50"
-                }`}
-              >
-                <Activity className="w-3.5 h-3.5" />
-                Perlu Tindak Lanjut ({filteredPolas.length})
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-            {cleanQuery && (
-              <span className="text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md font-mono">
-                Hasil pencarian &quot;{searchQuery}&quot;
-              </span>
-            )}
-            <span>
-              Total Ditampilkan:{" "}
-              <strong className="text-slate-800 tabular-nums font-mono">
-                {filteredDetailRows.length}
-              </strong>
-            </span>
+      {/* Info Banner on Category Rules */}
+      {activeKat === "ALFA" && (
+        <div className="flex items-start gap-2.5 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900">
+          <Info className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">Aturan Operasional Alfa:</span> Sesuai regulasi absensi, kategori{" "}
+            <strong>ALFA (A/a)</strong> mencakup kode <strong>A (Alfa Murni)</strong> dan kode{" "}
+            <strong>a (BA Ditolak)</strong> yang tetap dihitung sebagai Alfa.
           </div>
         </div>
+      )}
 
-        {/* View 1: Summary Karyawan */}
+      {activeKat === "BA" && (
+        <div className="flex items-start gap-2.5 p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-900">
+          <Info className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">Keterangan Berita Acara (BA):</span> Kode <strong>h</strong> adalah BA Diterima (dihitung Masuk / Hadir), sedangkan kode <strong>a</strong> adalah BA Ditolak (tetap dihitung Alfa).
+          </div>
+        </div>
+      )}
+
+      {/* Sub Tabs: Summary Karyawan | Detail Kejadian | Summary Project | Perlu Tindak Lanjut */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
+        <div className="flex border-b border-slate-200 bg-slate-50/70 px-4 pt-2 gap-2 overflow-x-auto select-none">
+          <button
+            onClick={() => setSubTab("summary")}
+            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+              subTab === "summary"
+                ? "border-blue-900 text-blue-900"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Summary Karyawan ({filteredSummaryKaryawanRows.length})
+          </button>
+          <button
+            onClick={() => setSubTab("detail")}
+            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+              subTab === "detail"
+                ? "border-blue-900 text-blue-900"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Detail Kejadian ({filteredDetailRows.length})
+          </button>
+          <button
+            onClick={() => setSubTab("project")}
+            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+              subTab === "project"
+                ? "border-blue-900 text-blue-900"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Summary Project ({Object.keys(filteredPerProject).length})
+          </button>
+          {(activeKat === "ALFA" || activeKat === "SAKIT" || activeKat === "IZIN") && (
+            <button
+              onClick={() => setSubTab("tindak_lanjut")}
+              className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                subTab === "tindak_lanjut"
+                  ? "border-rose-600 text-rose-700"
+                  : "border-transparent text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-rose-600" />
+              <span>Perlu Tindak Lanjut</span>
+              {filteredPolas.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-rose-100 text-rose-800 font-bold">
+                  {filteredPolas.length}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Tab 1: Summary Karyawan */}
         {subTab === "summary" && (
           <CekSummaryKaryawanTable
             rows={filteredSummaryKaryawanRows}
@@ -365,7 +391,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
           />
         )}
 
-        {/* View 2: Detail Kejadian */}
+        {/* Tab 2: Detail Kejadian */}
         {subTab === "detail" && (
           <CekDetailKejadianTable
             rows={filteredDetailRows}
@@ -375,7 +401,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
           />
         )}
 
-        {/* View 3: Summary Project */}
+        {/* Tab 3: Summary Project */}
         {subTab === "project" && (
           <CekSummaryProjectTable
             filteredPerProject={filteredPerProject}
@@ -385,7 +411,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
           />
         )}
 
-        {/* View 4: Perlu Tindak Lanjut */}
+        {/* Tab 4: Perlu Tindak Lanjut */}
         {subTab === "tindak_lanjut" && (
           <CekTindakLanjutTable
             filteredPolas={filteredPolas}
