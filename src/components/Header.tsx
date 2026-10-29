@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="border-b border-slate-200 bg-white sticky top-0 z-30 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
         {/* Zone 1: Brand Wordmark */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-blue-900 text-white flex items-center justify-center shadow-xs">
