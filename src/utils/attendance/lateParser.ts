@@ -8,6 +8,27 @@ export interface ParsedLateData {
 }
 
 /**
+ * Format durasi keterlambatan (menit) ke dalam jam dan menit jika >= 60 menit.
+ * Contoh:
+ * - 456 menit -> "7 jam 36 mnt" (atau "7j 36m" jika short)
+ * - 60 menit  -> "1 jam"
+ * - 45 menit  -> "45 mnt"
+ */
+export function formatDurasiMenit(menit: number, short = false): string {
+  if (menit <= 0) return short ? "0m" : "0 mnt";
+  const jam = Math.floor(menit / 60);
+  const sisa = menit % 60;
+
+  if (jam > 0) {
+    if (short) {
+      return sisa > 0 ? `${jam}j ${sisa}m` : `${jam}j`;
+    }
+    return sisa > 0 ? `${jam} jam ${sisa} mnt` : `${jam} jam`;
+  }
+  return short ? `${sisa}m` : `${sisa} mnt`;
+}
+
+/**
  * Parse Laporan Keterlambatan Karyawan HTML table (.xls / .html download)
  */
 export function parseLaporanKeterlambatan(raw: string, fileName: string): ParsedLateData {
@@ -157,8 +178,11 @@ export function aggregateLateByEmployee(incidents: LateIncident[]): LateEmployee
 
     item.frekuensi += 1;
     item.totalMenit += inc.menit;
-    item.tanggalList.push(`${inc.tanggal} (${inc.menit}m)`);
-    item.detailList.push(`${inc.tanggal} [Masuk: ${inc.jamMasuk}, Jadwal: ${inc.jadwalMulai}, Terlambat: ${inc.menit}m]`);
+    const durasiFormatted = formatDurasiMenit(inc.menit, true);
+    item.tanggalList.push(`${inc.tanggal} (${durasiFormatted})`);
+    item.detailList.push(
+      `${inc.tanggal} [Masuk: ${inc.jamMasuk}, Jadwal: ${inc.jadwalMulai}, Terlambat: ${durasiFormatted}]`
+    );
   }
 
   return Array.from(map.values()).sort((a, b) => b.totalMenit - a.totalMenit);
@@ -212,7 +236,7 @@ export function detectLatePatterns(
       jabatan: s.jabatan,
       project: s.project,
       jumlah: s.frekuensi,
-      pola: `Sering Terlambat (${s.frekuensi}x, total ${s.totalMenit} menit)`,
+      pola: `Sering Terlambat (${s.frekuensi}x, total ${formatDurasiMenit(s.totalMenit)})`,
       detail: s.detailList.join("; "),
     }));
 }

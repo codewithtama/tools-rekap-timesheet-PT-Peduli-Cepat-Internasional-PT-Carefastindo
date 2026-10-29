@@ -1,5 +1,6 @@
 import React from "react";
 import { SearchX } from "lucide-react";
+import { formatDurasiMenit } from "../../utils/attendanceEngine";
 
 interface ProjectStats {
   karyawanSet: Set<string>;
@@ -40,8 +41,8 @@ export const CekSummaryProjectTable: React.FC<CekSummaryProjectTableProps> = ({
               </>
             ) : activeKat === "TERLAMBAT" ? (
               <>
-                <th className="px-3 py-2 border border-slate-400 text-center w-28">Total Kejadian</th>
-                <th className="px-3 py-2 border border-slate-400 text-center w-28">Total Menit</th>
+                <th className="px-3 py-2 border border-slate-400 text-center w-28">Jumlah Kejadian</th>
+                <th className="px-3 py-2 border border-slate-400 text-center w-32">Total Terlambat</th>
               </>
             ) : (
               <th className="px-3 py-2 border border-slate-400 text-center w-32">Total Kejadian</th>
@@ -97,10 +98,13 @@ export const CekSummaryProjectTable: React.FC<CekSummaryProjectTableProps> = ({
                 ) : activeKat === "TERLAMBAT" ? (
                   <>
                     <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums font-bold text-amber-900">
-                      {stats.incidentCount}x
+                      {stats.incidentCount}
                     </td>
-                    <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums font-bold text-orange-950">
-                      {stats.totalMenit || 0} m
+                    <td
+                      className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums font-bold text-orange-950 whitespace-nowrap"
+                      title={`${stats.totalMenit || 0} menit`}
+                    >
+                      {formatDurasiMenit(stats.totalMenit || 0)}
                     </td>
                   </>
                 ) : (

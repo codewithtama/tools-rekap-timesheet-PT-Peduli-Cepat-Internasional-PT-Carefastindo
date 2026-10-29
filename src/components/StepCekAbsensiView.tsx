@@ -6,6 +6,7 @@ import {
   aggregateLateByEmployee,
   aggregateLateByProject,
   detectLatePatterns,
+  formatDurasiMenit,
 } from "../utils/attendanceEngine";
 import {
   buildCekKategoriXlsx,
@@ -158,7 +159,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
         jabatan: inc.jabatan,
         project: inc.project,
         tanggal: inc.tanggal,
-        kode: `${inc.menit} m`,
+        kode: formatDurasiMenit(inc.menit),
         status: `Masuk: ${inc.jamMasuk} (Jadwal: ${inc.jadwalMulai})`,
       }));
     }
@@ -209,14 +210,20 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
   const filteredPerProject = useMemo(() => {
     if (activeKat === "TERLAMBAT") {
       const map: Record<string, { karyawanSet: Set<string>; incidentCount: number; baH: number; baA: number; totalMenit: number }> = {};
-      filteredDetailRows.forEach(r => {
-        if (!map[r.project]) {
-          map[r.project] = { karyawanSet: new Set(), incidentCount: 0, baH: 0, baA: 0, totalMenit: 0 };
+      lateIncidents.forEach(inc => {
+        const proj = inc.project || "Tanpa Project";
+        if (cleanQuery) {
+          const match = [inc.nuc, inc.nama, inc.jabatan, proj, inc.tanggal].some(val =>
+            String(val || "").toLowerCase().includes(cleanQuery)
+          );
+          if (!match) return;
         }
-        map[r.project].karyawanSet.add(`${r.nuc}___${r.nama}`);
-        map[r.project].incidentCount++;
-        const menitNum = parseInt(r.kode.replace(/[^\d]/g, ""), 10) || 0;
-        map[r.project].totalMenit += menitNum;
+        if (!map[proj]) {
+          map[proj] = { karyawanSet: new Set(), incidentCount: 0, baH: 0, baA: 0, totalMenit: 0 };
+        }
+        map[proj].karyawanSet.add(`${inc.nuc}___${inc.nama}`);
+        map[proj].incidentCount++;
+        map[proj].totalMenit += inc.menit;
       });
       return map;
     }

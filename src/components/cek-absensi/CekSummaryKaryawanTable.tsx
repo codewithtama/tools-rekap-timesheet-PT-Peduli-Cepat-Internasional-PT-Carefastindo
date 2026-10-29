@@ -1,5 +1,6 @@
 import React from "react";
 import { SearchX } from "lucide-react";
+import { formatDurasiMenit } from "../../utils/attendanceEngine";
 
 export interface SummaryKaryawanRow {
   nuc: string;
@@ -44,8 +45,8 @@ export const CekSummaryKaryawanTable: React.FC<CekSummaryKaryawanTableProps> = (
               </>
             ) : activeKat === "TERLAMBAT" ? (
               <>
-                <th className="px-2.5 py-2 border border-slate-400 text-center w-20">Frekuensi</th>
-                <th className="px-2.5 py-2 border border-slate-400 text-center w-24">Total Menit</th>
+                <th className="px-2.5 py-2 border border-slate-400 text-center w-20">Jumlah</th>
+                <th className="px-2.5 py-2 border border-slate-400 text-center w-28">Total Terlambat</th>
               </>
             ) : (
               <th className="px-2.5 py-2 border border-slate-400 text-center w-28">
@@ -53,7 +54,7 @@ export const CekSummaryKaryawanTable: React.FC<CekSummaryKaryawanTableProps> = (
               </th>
             )}
             <th className="px-3 py-2 border border-slate-400 text-left min-w-[200px]">
-              {activeKat === "TERLAMBAT" ? "Rincian Tanggal (Menit)" : "Tanggal Kejadian"}
+              {activeKat === "TERLAMBAT" ? "Rincian Tanggal (Durasi)" : "Tanggal Kejadian"}
             </th>
           </tr>
         </thead>
@@ -111,11 +112,14 @@ export const CekSummaryKaryawanTable: React.FC<CekSummaryKaryawanTableProps> = (
                   </>
                 ) : activeKat === "TERLAMBAT" ? (
                   <>
-                    <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-amber-900 bg-amber-50/30 tabular-nums">
-                      {r.total}x
+                    <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-amber-900 bg-amber-50/30 tabular-nums font-mono">
+                      {r.total}
                     </td>
-                    <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-orange-950 bg-orange-50/30 tabular-nums font-mono">
-                      {r.totalMenit || 0} m
+                    <td
+                      className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-orange-950 bg-orange-50/30 tabular-nums font-mono whitespace-nowrap"
+                      title={`${r.totalMenit || 0} menit`}
+                    >
+                      {formatDurasiMenit(r.totalMenit || 0)}
                     </td>
                   </>
                 ) : (

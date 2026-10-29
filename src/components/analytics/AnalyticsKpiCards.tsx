@@ -8,6 +8,7 @@ import {
   FileCheck,
   TimerReset,
 } from "lucide-react";
+import { formatDurasiMenit } from "../../utils/attendanceEngine";
 
 export interface KpiTotals {
   mp: number;
@@ -156,13 +157,13 @@ export const AnalyticsKpiCards: React.FC<AnalyticsKpiCardsProps> = ({ kpiTotals,
           <div className="min-w-0 flex-1">
             <div className="text-[11px] text-orange-800 font-medium">Keterlambatan</div>
             <div className="text-base font-bold text-orange-950 font-mono tabular-nums leading-tight">
-              {lateTotals.count}x
+              {lateTotals.count}
             </div>
             <div
               className="text-[10px] text-orange-700 font-medium truncate mt-0.5"
               title={`Total ${lateTotals.totalMenit} menit keterlambatan dari ${lateTotals.karyawanCount} karyawan`}
             >
-              {lateTotals.totalMenit} m ({lateTotals.karyawanCount} org)
+              {formatDurasiMenit(lateTotals.totalMenit)} ({lateTotals.karyawanCount} org)
             </div>
           </div>
         </div>

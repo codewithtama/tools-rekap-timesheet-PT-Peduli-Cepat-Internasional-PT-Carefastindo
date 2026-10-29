@@ -5,6 +5,7 @@ import {
   aggregateLateByEmployee,
   aggregateLateByProject,
   detectLatePatterns,
+  formatDurasiMenit,
 } from "../attendance/lateParser";
 import { FONT_NAME, populateSheetTable } from "./excelStyles";
 
@@ -225,7 +226,7 @@ export async function buildCekKeterlambatanXlsx(
       s.jabatan,
       s.project,
       s.frekuensi,
-      s.totalMenit,
+      formatDurasiMenit(s.totalMenit),
       s.tanggalList.join(", "),
     ];
   });
@@ -233,11 +234,11 @@ export async function buildCekKeterlambatanXlsx(
   populateSheetTable(
     ws1,
     `SUMMARY KETERLAMBATAN KARYAWAN${periodeTxt ? " PERIODE " + periodeTxt : ""}`,
-    ["No", "NUC", "Nama", "Jabatan", "Project", "Frekuensi Terlambat", "Total Menit", "Rincian Tanggal (Menit)"],
+    ["No", "NUC", "Nama", "Jabatan", "Project", "Jumlah", "Total Terlambat", "Rincian Tanggal (Durasi)"],
     baris1,
-    [6, 14, 30, 18, 28, 18, 14, 60],
+    [6, 14, 30, 18, 28, 14, 18, 60],
     [1, 2, 6, 7],
-    ["TOTAL", "", "", "", "", grandTotalKejadian, grandTotalMenit, ""]
+    ["TOTAL", "", "", "", "", grandTotalKejadian, formatDurasiMenit(grandTotalMenit), ""]
   );
 
   // Sheet 2: Detail Kejadian
@@ -251,17 +252,17 @@ export async function buildCekKeterlambatanXlsx(
     inc.tanggal,
     inc.jamMasuk,
     inc.jadwalMulai,
-    inc.menit,
+    formatDurasiMenit(inc.menit),
   ]);
 
   populateSheetTable(
     ws2,
     `DETAIL KEJADIAN KETERLAMBATAN${periodeTxt ? " PERIODE " + periodeTxt : ""}`,
-    ["No", "NUC", "Nama", "Jabatan", "Project", "Tanggal", "Jam Masuk", "Jadwal Mulai", "Keterlambatan (menit)"],
+    ["No", "NUC", "Nama", "Jabatan", "Project", "Tanggal", "Jam Masuk", "Jadwal Mulai", "Terlambat"],
     baris2,
-    [6, 14, 30, 18, 28, 16, 14, 14, 20],
+    [6, 14, 30, 18, 28, 16, 14, 14, 18],
     [1, 2, 6, 7, 8, 9],
-    ["TOTAL", "", "", "", "", "", "", "", grandTotalMenit]
+    ["TOTAL", "", "", "", "", "", "", "", formatDurasiMenit(grandTotalMenit)]
   );
 
   // Sheet 3: Summary Project
@@ -271,22 +272,22 @@ export async function buildCekKeterlambatanXlsx(
     namaP,
     v.employeeCount,
     v.incidentCount,
-    v.totalMenit,
+    formatDurasiMenit(v.totalMenit),
   ]);
 
   populateSheetTable(
     ws3,
     `SUMMARY KETERLAMBATAN PER PROJECT${periodeTxt ? " PERIODE " + periodeTxt : ""}`,
-    ["No", "Project", "Jumlah Karyawan", "Total Kejadian", "Total Menit"],
+    ["No", "Project", "Jumlah Karyawan", "Jumlah Kejadian", "Total Terlambat"],
     baris3,
-    [6, 34, 18, 16, 16],
+    [6, 34, 18, 16, 18],
     [1, 3, 4, 5],
     [
       "TOTAL",
       "",
       Object.values(projectAgg).reduce((acc, v) => acc + v.employeeCount, 0),
       grandTotalKejadian,
-      grandTotalMenit,
+      formatDurasiMenit(grandTotalMenit),
     ]
   );
 
