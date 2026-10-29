@@ -8,13 +8,14 @@ export interface SummaryKaryawanRow {
   project: string;
   baH?: number;
   baA?: number;
+  totalMenit?: number;
   total: number;
   tanggal: string;
 }
 
 interface CekSummaryKaryawanTableProps {
   rows: SummaryKaryawanRow[];
-  activeKat: "ALFA" | "SAKIT" | "IZIN" | "LEMBUR" | "BA";
+  activeKat: "ALFA" | "SAKIT" | "IZIN" | "LEMBUR" | "BA" | "TERLAMBAT";
   searchQuery: string;
   onResetSearch: () => void;
 }
@@ -41,18 +42,25 @@ export const CekSummaryKaryawanTable: React.FC<CekSummaryKaryawanTableProps> = (
                 <th className="px-2.5 py-2 border border-slate-400 text-center w-24">BA Ditolak (a)</th>
                 <th className="px-2.5 py-2 border border-slate-400 text-center w-20">Total BA</th>
               </>
+            ) : activeKat === "TERLAMBAT" ? (
+              <>
+                <th className="px-2.5 py-2 border border-slate-400 text-center w-20">Frekuensi</th>
+                <th className="px-2.5 py-2 border border-slate-400 text-center w-24">Total Menit</th>
+              </>
             ) : (
               <th className="px-2.5 py-2 border border-slate-400 text-center w-28">
                 {activeKat === "ALFA" ? "Total Alfa (A/a)" : "Jumlah"}
               </th>
             )}
-            <th className="px-3 py-2 border border-slate-400 text-left min-w-[200px]">Tanggal Kejadian</th>
+            <th className="px-3 py-2 border border-slate-400 text-left min-w-[200px]">
+              {activeKat === "TERLAMBAT" ? "Rincian Tanggal (Menit)" : "Tanggal Kejadian"}
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200">
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={activeKat === "BA" ? 9 : 7} className="p-8 text-center bg-slate-50/50">
+              <td colSpan={activeKat === "BA" ? 9 : activeKat === "TERLAMBAT" ? 8 : 7} className="p-8 text-center bg-slate-50/50">
                 <div className="max-w-md mx-auto space-y-2">
                   <SearchX className="w-6 h-6 text-slate-400 mx-auto" />
                   <p className="text-xs font-semibold text-slate-700">
@@ -99,6 +107,15 @@ export const CekSummaryKaryawanTable: React.FC<CekSummaryKaryawanTableProps> = (
                     </td>
                     <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-slate-900 tabular-nums">
                       {r.total}
+                    </td>
+                  </>
+                ) : activeKat === "TERLAMBAT" ? (
+                  <>
+                    <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-amber-900 bg-amber-50/30 tabular-nums">
+                      {r.total}x
+                    </td>
+                    <td className="px-2.5 py-1.5 border border-slate-200 text-center font-bold text-orange-950 bg-orange-50/30 tabular-nums font-mono">
+                      {r.totalMenit || 0} m
                     </td>
                   </>
                 ) : (

@@ -1,10 +1,15 @@
 import ExcelJS from "exceljs";
-import { KaryawanCek } from "../../types/attendance";
+import { KaryawanCek, LateIncident } from "../../types/attendance";
 import { hitungPola } from "../attendance/anomalyDetector";
+import {
+  aggregateLateByEmployee,
+  aggregateLateByProject,
+  detectLatePatterns,
+} from "../attendance/lateParser";
 import { FONT_NAME, populateSheetTable } from "./excelStyles";
 
 /**
- * LANGKAH 3: Build individual Category Workbook
+ * LANGKAH 3: Build individual Category Workbook (ALFA, SAKIT, IZIN, LEMBUR, BA)
  */
 export async function buildCekKategoriXlsx(
   karyawan: KaryawanCek[],
@@ -144,7 +149,7 @@ export async function buildCekKategoriXlsx(
     populateSheetTable(
       ws3,
       `SUMMARY ${kat} PER PROJECT`,
-      ["No", "Project", "Jumlah Karyawan", "Total Kejadian"],
+      ["No", "Project", "Jumlah Karyawan", `Total ${kat}`],
       baris3,
       [6, 34, 16, 16],
       [1, 3, 4],
@@ -193,3 +198,134 @@ export async function buildCekKategoriXlsx(
   });
 }
 
+/**
+ * LANGKAH 3: Build individual CEK_TERLAMBAT.xlsx
+ */
+export async function buildCekKeterlambatanXlsx(
+  incidents: LateIncident[],
+  periodeTxt: string
+): Promise<Blob> {
+  const wb = new ExcelJS.Workbook();
+  const summaries = aggregateLateByEmployee(incidents);
+  const projectAgg = aggregateLateByProject(incidents);
+  const polas = detectLatePatterns(summaries, 3);
+
+  // Sheet 1: Summary Karyawan
+  const ws1 = wb.addWorksheet("Summary Karyawan");
+  let grandTotalMenit = 0;
+  let grandTotalKejadian = 0;
+
+  const baris1 = summaries.map((s, idx) => {
+    grandTotalKejadian += s.frekuensi;
+    grandTotalMenit += s.totalMenit;
+    return [
+      idx + 1,
+      s.nuc,
+      s.nama,
+      s.jabatan,
+      s.project,
+      s.frekuensi,
+      s.totalMenit,
+      s.tanggalList.join(", "),
+    ];
+  });
+
+  populateSheetTable(
+    ws1,
+    `SUMMARY KETERLAMBATAN KARYAWAN${periodeTxt ? " PERIODE " + periodeTxt : ""}`,
+    ["No", "NUC", "Nama", "Jabatan", "Project", "Frekuensi Terlambat", "Total Menit", "Rincian Tanggal (Menit)"],
+    baris1,
+    [6, 14, 30, 18, 28, 18, 14, 60],
+    [1, 2, 6, 7],
+    ["TOTAL", "", "", "", "", grandTotalKejadian, grandTotalMenit, ""]
+  );
+
+  // Sheet 2: Detail Kejadian
+  const ws2 = wb.addWorksheet("Detail Kejadian");
+  const baris2 = incidents.map((inc, idx) => [
+    idx + 1,
+    inc.nuc,
+    inc.nama,
+    inc.jabatan,
+    inc.project,
+    inc.tanggal,
+    inc.jamMasuk,
+    inc.jadwalMulai,
+    inc.menit,
+  ]);
+
+  populateSheetTable(
+    ws2,
+    `DETAIL KEJADIAN KETERLAMBATAN${periodeTxt ? " PERIODE " + periodeTxt : ""}`,
+    ["No", "NUC", "Nama", "Jabatan", "Project", "Tanggal", "Jam Masuk", "Jadwal Mulai", "Keterlambatan (menit)"],
+    baris2,
+    [6, 14, 30, 18, 28, 16, 14, 14, 20],
+    [1, 2, 6, 7, 8, 9],
+    ["TOTAL", "", "", "", "", "", "", "", grandTotalMenit]
+  );
+
+  // Sheet 3: Summary Project
+  const ws3 = wb.addWorksheet("Summary Project");
+  const baris3 = Object.entries(projectAgg).map(([namaP, v], idx) => [
+    idx + 1,
+    namaP,
+    v.employeeCount,
+    v.incidentCount,
+    v.totalMenit,
+  ]);
+
+  populateSheetTable(
+    ws3,
+    `SUMMARY KETERLAMBATAN PER PROJECT${periodeTxt ? " PERIODE " + periodeTxt : ""}`,
+    ["No", "Project", "Jumlah Karyawan", "Total Kejadian", "Total Menit"],
+    baris3,
+    [6, 34, 18, 16, 16],
+    [1, 3, 4, 5],
+    [
+      "TOTAL",
+      "",
+      Object.values(projectAgg).reduce((acc, v) => acc + v.employeeCount, 0),
+      grandTotalKejadian,
+      grandTotalMenit,
+    ]
+  );
+
+  // Sheet 4: Perlu Tindak Lanjut (Sering Terlambat >= 3x)
+  const ws4 = wb.addWorksheet("Perlu Tindak Lanjut");
+  const baris4 = polas.map(p => [
+    p.no,
+    p.nuc,
+    p.nama,
+    p.jabatan,
+    p.project,
+    p.jumlah,
+    p.pola,
+    p.detail,
+  ]);
+
+  populateSheetTable(
+    ws4,
+    `KARYAWAN SERING TERLAMBAT (>= 3 KALI)${periodeTxt ? " PERIODE " + periodeTxt : ""}`,
+    ["No", "NUC", "Nama", "Jabatan", "Project", "Jumlah", "Pola", "Detail Kejadian"],
+    baris4,
+    [6, 14, 30, 18, 28, 10, 26, 90],
+    [1, 2, 6]
+  );
+
+  const noteR = 3;
+  ws4.getCell(`A${noteR}`).value =
+    polas.length > 0
+      ? "Kriteria: Karyawan yang tercatat terlambat minimal 3 kali pada periode laporan."
+      : "Tidak ada karyawan dengan catatan sering terlambat (>= 3 kali).";
+  ws4.getCell(`A${noteR}`).font = {
+    name: FONT_NAME,
+    size: 9,
+    italic: true,
+    color: { argb: polas.length > 0 ? "FF666666" : "FF006100" },
+  };
+
+  const buffer = await wb.xlsx.writeBuffer();
+  return new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}

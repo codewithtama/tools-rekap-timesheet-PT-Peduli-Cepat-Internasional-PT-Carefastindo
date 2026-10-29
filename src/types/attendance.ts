@@ -75,6 +75,29 @@ export interface PolaDetail {
   detail: string;
 }
 
+export interface LateIncident {
+  no: number;
+  nuc: string;
+  nama: string;
+  jabatan: string;
+  project: string;
+  tanggal: string;
+  jamMasuk: string;
+  jadwalMulai: string;
+  menit: number;
+}
+
+export interface LateEmployeeSummary {
+  nuc: string;
+  nama: string;
+  jabatan: string;
+  project: string;
+  frekuensi: number;
+  totalMenit: number;
+  tanggalList: string[];
+  detailList: string[];
+}
+
 export interface PicPackage {
   proyek: string;
   aman: string;
@@ -87,7 +110,10 @@ export interface PicPackage {
     LEMBUR: number;
     BA_h: number;
     BA_a: number;
+    LATE_freq?: number;
+    LATE_menit?: number;
   };
+  late_karyawan?: LateEmployeeSummary[];
   n_tl: number;
   n_kejadian: number;
   pesan: string;

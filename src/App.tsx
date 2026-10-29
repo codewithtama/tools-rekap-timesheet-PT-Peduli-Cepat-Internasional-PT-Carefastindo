@@ -13,7 +13,13 @@ import { StepSummaryView } from "./components/StepSummaryView";
 import { StepCekAbsensiView } from "./components/StepCekAbsensiView";
 import { StepPaketPicView } from "./components/StepPaketPicView";
 import { EmptyStateGuide } from "./components/EmptyStateGuide";
-import { TimesheetData, RekapProjectData, KaryawanCek, PicPackage } from "./types/attendance";
+import {
+  TimesheetData,
+  RekapProjectData,
+  KaryawanCek,
+  PicPackage,
+  LateIncident,
+} from "./types/attendance";
 import {
   parseTimesheet,
   analisisHariBerjalan,
@@ -24,12 +30,14 @@ import {
   periodeJudul,
   tglId,
   parseISODate,
+  parseLaporanKeterlambatan,
 } from "./utils/attendanceEngine";
 import { getSampleTimesheets } from "./utils/sampleData";
 import {
   buildRekapXlsx,
   buildSummaryXlsx,
   buildCekKategoriXlsx,
+  buildCekKeterlambatanXlsx,
   buildMasterZip,
   downloadBlob,
 } from "./utils/excelExporter";
@@ -43,6 +51,11 @@ export default function App() {
   const [prosesSemua, setProsesSemua] = useState<boolean>(false);
   const [customRange, setCustomRange] = useState<{ dari: Date; sampai: Date } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Late Incidents State (Laporan Keterlambatan)
+  const [lateIncidents, setLateIncidents] = useState<LateIncident[]>([]);
+  const [lateFileName, setLateFileName] = useState<string>("");
+  const [latePeriodeTxt, setLatePeriodeTxt] = useState<string>("");
 
   // Parse raw timesheets into TimesheetData
   const parsedTimesheets = useMemo<TimesheetData[]>(() => {
@@ -149,8 +162,8 @@ export default function App() {
   }, [effectiveRange]);
 
   const picPackages = useMemo<PicPackage[]>(() => {
-    return bangunPaketPic(karyawanCek, periodeTxt, hariBelumFinalSet);
-  }, [karyawanCek, periodeTxt, hariBelumFinalSet]);
+    return bangunPaketPic(karyawanCek, periodeTxt, hariBelumFinalSet, lateIncidents);
+  }, [karyawanCek, periodeTxt, hariBelumFinalSet, lateIncidents]);
 
   const [rekapBlobs, setRekapBlobs] = useState<Record<string, Blob>>({});
 
@@ -195,6 +208,9 @@ export default function App() {
     setTimesheetsRaw([]);
     setTemplateLoaded(false);
     setTemplateFileName("");
+    setLateIncidents([]);
+    setLateFileName("");
+    setLatePeriodeTxt("");
     setCustomRange(null);
     setProsesSemua(false);
     setActiveStep(1);
@@ -223,6 +239,21 @@ export default function App() {
     setTemplateFileName(file.name);
   };
 
+  const handleLateFileSelected = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = parseLaporanKeterlambatan(text, file.name);
+      setLateIncidents(parsed.incidents);
+      setLateFileName(file.name);
+      if (parsed.periodeTxt) {
+        setLatePeriodeTxt(parsed.periodeTxt);
+      }
+    } catch (err) {
+      console.error("Gagal membaca file keterlambatan:", err);
+      alert("Gagal memproses file keterlambatan: " + (err as Error).message);
+    }
+  };
+
   const handleActivateDefaultTemplate = async () => {
     setTemplateLoaded(true);
     setTemplateFileName("SUMMARY_ABSENSI_TEMPLATE.xlsx (Default)");
@@ -245,6 +276,12 @@ export default function App() {
         const kodeTxt = kat === "BA" ? "h/a" : kat === "ALFA" ? "A/a" : kat === "SAKIT" ? "S/SR" : kat === "IZIN" ? "I/IR" : "G/g";
         const b = await buildCekKategoriXlsx(karyawanCek, kat, kodeTxt, periodeTxt, hariBelumFinalSet);
         cekBlobs.push({ name: `CEK_${kat}_${stempel}.xlsx`, blob: b });
+      }
+
+      // Add CEK_TERLAMBAT if late incidents exist
+      if (lateIncidents.length > 0) {
+        const lateBlob = await buildCekKeterlambatanXlsx(lateIncidents, latePeriodeTxt || periodeTxt);
+        cekBlobs.push({ name: `CEK_TERLAMBAT_${stempel}.xlsx`, blob: lateBlob });
       }
 
       const rekapList = Object.entries(rekapBlobs).map(([safeName, blob]) => ({ safeName, blob }));
@@ -285,9 +322,12 @@ export default function App() {
         <FileUploadZone
           onFilesSelected={handleFilesSelected}
           onTemplateSelected={handleTemplateSelected}
+          onLateFileSelected={handleLateFileSelected}
           templateLoaded={templateLoaded}
           templateFileName={templateFileName}
           timesheetCount={parsedTimesheets.length}
+          lateCount={lateIncidents.length}
+          lateFileName={lateFileName}
         />
 
         {detectedPeriod && effectiveRange && (
@@ -314,6 +354,7 @@ export default function App() {
           <AttendanceAnalyticsBanner
             projects={rekapProjects}
             effectiveRange={effectiveRange}
+            lateIncidents={lateIncidents}
           />
         )}
 
@@ -368,6 +409,11 @@ export default function App() {
                 }`}
               >
                 3. Cek Ketidakhadiran
+                {lateIncidents.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-amber-100 text-amber-800 font-bold">
+                    +Terlambat
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setActiveStep(4)}
@@ -386,7 +432,7 @@ export default function App() {
               <span className="font-semibold text-blue-950 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
                 {activeStep === 1 && "Tabel Rekap Timesheet Harian"}
                 {activeStep === 2 && "Tabel Ringkasan 13 Kolom & Grand Total"}
-                {activeStep === 3 && "Tabel Ketidakhadiran & Pola Khusus"}
+                {activeStep === 3 && (lateIncidents.length > 0 ? "Tabel Ketidakhadiran & Keterlambatan Menit" : "Tabel Ketidakhadiran & Pola Khusus")}
                 {activeStep === 4 && "Paket Berkas & Draf Pesan PIC per Proyek"}
               </span>
             </div>
@@ -410,6 +456,8 @@ export default function App() {
                 karyawan={karyawanCek}
                 periodeTxt={periodeTxt}
                 hariBelumFinal={hariBelumFinalSet}
+                lateIncidents={lateIncidents}
+                latePeriodeTxt={latePeriodeTxt}
               />
             )}
             {activeStep === 4 && (

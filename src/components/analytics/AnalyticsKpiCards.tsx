@@ -6,6 +6,7 @@ import {
   CalendarX,
   Clock,
   FileCheck,
+  TimerReset,
 } from "lucide-react";
 
 export interface KpiTotals {
@@ -23,15 +24,27 @@ export interface KpiTotals {
   totalAnomali: number;
 }
 
-interface AnalyticsKpiCardsProps {
-  kpiTotals: KpiTotals;
+export interface LateKpiTotals {
+  count: number;
+  totalMenit: number;
+  karyawanCount: number;
 }
 
-export const AnalyticsKpiCards: React.FC<AnalyticsKpiCardsProps> = ({ kpiTotals }) => {
+interface AnalyticsKpiCardsProps {
+  kpiTotals: KpiTotals;
+  lateTotals?: LateKpiTotals | null;
+}
+
+export const AnalyticsKpiCards: React.FC<AnalyticsKpiCardsProps> = ({ kpiTotals, lateTotals }) => {
   const alfaMurni = Math.max(0, kpiTotals.alfa - kpiTotals.baA);
+  const hasLate = !!(lateTotals && lateTotals.count > 0);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div
+      className={`grid grid-cols-2 sm:grid-cols-3 ${
+        hasLate ? "lg:grid-cols-7" : "lg:grid-cols-6"
+      } gap-3`}
+    >
       {/* 1. Total Personel */}
       <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-900 flex items-center justify-center shrink-0">
@@ -133,6 +146,27 @@ export const AnalyticsKpiCards: React.FC<AnalyticsKpiCardsProps> = ({ kpiTotals 
           </div>
         </div>
       </div>
+
+      {/* 7. Keterlambatan (Opsional, jika ada file diunggah) */}
+      {hasLate && lateTotals && (
+        <div className="p-3 bg-orange-50/70 border border-orange-200/80 rounded-xl flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-800 flex items-center justify-center shrink-0">
+            <TimerReset className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] text-orange-800 font-medium">Keterlambatan</div>
+            <div className="text-base font-bold text-orange-950 font-mono tabular-nums leading-tight">
+              {lateTotals.count}x
+            </div>
+            <div
+              className="text-[10px] text-orange-700 font-medium truncate mt-0.5"
+              title={`Total ${lateTotals.totalMenit} menit keterlambatan dari ${lateTotals.karyawanCount} karyawan`}
+            >
+              {lateTotals.totalMenit} m ({lateTotals.karyawanCount} org)
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

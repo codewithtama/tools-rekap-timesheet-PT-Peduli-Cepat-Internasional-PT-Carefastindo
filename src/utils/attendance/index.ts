@@ -4,4 +4,4 @@ export * from "./projectMatcher";
 export * from "./timesheetParser";
 export * from "./anomalyDetector";
 export * from "./picBuilder";
-
+export * from "./lateParser";

@@ -6,11 +6,12 @@ interface ProjectStats {
   incidentCount: number;
   baH: number;
   baA: number;
+  totalMenit?: number;
 }
 
 interface CekSummaryProjectTableProps {
   filteredPerProject: Record<string, ProjectStats>;
-  activeKat: "ALFA" | "SAKIT" | "IZIN" | "LEMBUR" | "BA";
+  activeKat: "ALFA" | "SAKIT" | "IZIN" | "LEMBUR" | "BA" | "TERLAMBAT";
   searchQuery: string;
   onResetSearch: () => void;
 }
@@ -37,6 +38,11 @@ export const CekSummaryProjectTable: React.FC<CekSummaryProjectTableProps> = ({
                 <th className="px-3 py-2 border border-slate-400 text-center w-28">BA Ditolak (a)</th>
                 <th className="px-3 py-2 border border-slate-400 text-center w-28">Total BA</th>
               </>
+            ) : activeKat === "TERLAMBAT" ? (
+              <>
+                <th className="px-3 py-2 border border-slate-400 text-center w-28">Total Kejadian</th>
+                <th className="px-3 py-2 border border-slate-400 text-center w-28">Total Menit</th>
+              </>
             ) : (
               <th className="px-3 py-2 border border-slate-400 text-center w-32">Total Kejadian</th>
             )}
@@ -45,7 +51,7 @@ export const CekSummaryProjectTable: React.FC<CekSummaryProjectTableProps> = ({
         <tbody className="divide-y divide-slate-200">
           {projectEntries.length === 0 ? (
             <tr>
-              <td colSpan={6} className="p-8 text-center bg-slate-50/50">
+              <td colSpan={activeKat === "BA" ? 6 : activeKat === "TERLAMBAT" ? 5 : 4} className="p-8 text-center bg-slate-50/50">
                 <div className="max-w-md mx-auto space-y-2">
                   <SearchX className="w-6 h-6 text-slate-400 mx-auto" />
                   <p className="text-xs font-semibold text-slate-700">
@@ -88,6 +94,15 @@ export const CekSummaryProjectTable: React.FC<CekSummaryProjectTableProps> = ({
                       {stats.incidentCount}
                     </td>
                   </>
+                ) : activeKat === "TERLAMBAT" ? (
+                  <>
+                    <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums font-bold text-amber-900">
+                      {stats.incidentCount}x
+                    </td>
+                    <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums font-bold text-orange-950">
+                      {stats.totalMenit || 0} m
+                    </td>
+                  </>
                 ) : (
                   <td className="px-3 py-1.5 border border-slate-200 text-center font-mono tabular-nums font-bold text-slate-900">
                     {stats.incidentCount}
@@ -101,4 +116,3 @@ export const CekSummaryProjectTable: React.FC<CekSummaryProjectTableProps> = ({
     </div>
   );
 };
-

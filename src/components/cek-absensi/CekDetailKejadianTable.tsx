@@ -13,7 +13,7 @@ export interface DetailKejadianRow {
 
 interface CekDetailKejadianTableProps {
   rows: DetailKejadianRow[];
-  activeKat: "ALFA" | "SAKIT" | "IZIN" | "LEMBUR" | "BA";
+  activeKat: "ALFA" | "SAKIT" | "IZIN" | "LEMBUR" | "BA" | "TERLAMBAT";
   searchQuery: string;
   onResetSearch: () => void;
 }
@@ -24,7 +24,7 @@ export const CekDetailKejadianTable: React.FC<CekDetailKejadianTableProps> = ({
   searchQuery,
   onResetSearch,
 }) => {
-  const showStatusCol = activeKat === "BA" || activeKat === "ALFA";
+  const showStatusCol = activeKat === "BA" || activeKat === "ALFA" || activeKat === "TERLAMBAT";
 
   return (
     <div className="overflow-x-auto max-h-[500px]">
@@ -37,9 +37,13 @@ export const CekDetailKejadianTable: React.FC<CekDetailKejadianTableProps> = ({
             <th className="px-3 py-2 border border-slate-400 text-left min-w-[130px]">Jabatan</th>
             <th className="px-3 py-2 border border-slate-400 text-left min-w-[180px]">Project</th>
             <th className="px-3 py-2 border border-slate-400 text-center w-28">Tanggal</th>
-            <th className="px-2.5 py-2 border border-slate-400 text-center w-16">Kode</th>
+            <th className="px-2.5 py-2 border border-slate-400 text-center w-20">
+              {activeKat === "TERLAMBAT" ? "Terlambat" : "Kode"}
+            </th>
             {showStatusCol && (
-              <th className="px-3 py-2 border border-slate-400 text-left min-w-[150px]">Status &amp; Keterangan</th>
+              <th className="px-3 py-2 border border-slate-400 text-left min-w-[160px]">
+                {activeKat === "TERLAMBAT" ? "Jam Masuk vs Jadwal" : "Status & Keterangan"}
+              </th>
             )}
           </tr>
         </thead>
@@ -86,22 +90,28 @@ export const CekDetailKejadianTable: React.FC<CekDetailKejadianTableProps> = ({
                 <td className="px-3 py-1.5 border border-slate-200 text-center font-medium text-slate-800">
                   {r.tanggal}
                 </td>
-                <td className="px-2.5 py-1.5 border border-slate-200 text-center font-mono font-bold text-blue-900">
+                <td className="px-2.5 py-1.5 border border-slate-200 text-center font-mono font-bold text-amber-900">
                   {r.kode}
                 </td>
                 {showStatusCol && (
                   <td className="px-3 py-1.5 border border-slate-200 font-semibold text-[11px]">
-                    <span
-                      className={
-                        r.kode === "h"
-                          ? "text-sky-700 bg-sky-50 px-2 py-0.5 rounded-sm"
-                          : r.kode === "a"
-                          ? "text-rose-700 bg-rose-50 px-2 py-0.5 rounded-sm"
-                          : "text-slate-700 bg-slate-100 px-2 py-0.5 rounded-sm font-normal"
-                      }
-                    >
-                      {r.status || (r.kode === "a" ? "BA Ditolak (Tetap Alfa)" : r.kode === "A" ? "Alfa Murni" : "-")}
-                    </span>
+                    {activeKat === "TERLAMBAT" ? (
+                      <span className="text-slate-700 font-mono font-medium">
+                        {r.status}
+                      </span>
+                    ) : (
+                      <span
+                        className={
+                          r.kode === "h"
+                            ? "text-sky-700 bg-sky-50 px-2 py-0.5 rounded-sm"
+                            : r.kode === "a"
+                            ? "text-rose-700 bg-rose-50 px-2 py-0.5 rounded-sm"
+                            : "text-slate-700 bg-slate-100 px-2 py-0.5 rounded-sm font-normal"
+                        }
+                      >
+                        {r.status || (r.kode === "a" ? "BA Ditolak (Tetap Alfa)" : r.kode === "A" ? "Alfa Murni" : "-")}
+                      </span>
+                    )}
                   </td>
                 )}
               </tr>

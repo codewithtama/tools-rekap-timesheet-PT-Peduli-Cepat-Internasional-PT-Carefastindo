@@ -1,8 +1,17 @@
 import React, { useState, useMemo } from "react";
-import { Download, Activity, Search, X, Filter, Info } from "lucide-react";
-import { KaryawanCek, KATEGORI_FILE } from "../types/attendance";
-import { hitungPola } from "../utils/attendanceEngine";
-import { buildCekKategoriXlsx, downloadBlob } from "../utils/excelExporter";
+import { Download, Activity, Search, X, Filter, Info, Clock } from "lucide-react";
+import { KaryawanCek, KATEGORI_FILE, LateIncident } from "../types/attendance";
+import {
+  hitungPola,
+  aggregateLateByEmployee,
+  aggregateLateByProject,
+  detectLatePatterns,
+} from "../utils/attendanceEngine";
+import {
+  buildCekKategoriXlsx,
+  buildCekKeterlambatanXlsx,
+  downloadBlob,
+} from "../utils/excelExporter";
 import { CekSummaryKaryawanTable, SummaryKaryawanRow } from "./cek-absensi/CekSummaryKaryawanTable";
 import { CekDetailKejadianTable, DetailKejadianRow } from "./cek-absensi/CekDetailKejadianTable";
 import { CekSummaryProjectTable } from "./cek-absensi/CekSummaryProjectTable";
@@ -12,33 +21,43 @@ interface StepCekAbsensiViewProps {
   karyawan: KaryawanCek[];
   periodeTxt: string;
   hariBelumFinal: Set<string>;
+  lateIncidents?: LateIncident[];
+  latePeriodeTxt?: string;
 }
 
 export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
   karyawan,
   periodeTxt,
   hariBelumFinal,
+  lateIncidents = [],
+  latePeriodeTxt,
 }) => {
-  const [activeKat, setActiveKat] = useState<"ALFA" | "SAKIT" | "IZIN" | "LEMBUR" | "BA">("ALFA");
+  const [activeKat, setActiveKat] = useState<"ALFA" | "SAKIT" | "IZIN" | "LEMBUR" | "BA" | "TERLAMBAT">("ALFA");
   const [subTab, setSubTab] = useState<"summary" | "detail" | "project" | "tindak_lanjut">("summary");
   const [downloading, setDownloading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypeFilter, setSelectedTypeFilter] = useState("ALL");
 
-  const activeKatConfig = KATEGORI_FILE.find(k => k[1] === activeKat) || KATEGORI_FILE[0];
+  const activeKatConfig = KATEGORI_FILE.find(k => k[1] === activeKat);
 
   const handleDownloadXlsx = async () => {
     setDownloading(true);
     try {
-      const blob = await buildCekKategoriXlsx(
-        karyawan,
-        activeKat,
-        activeKatConfig[2],
-        periodeTxt,
-        hariBelumFinal
-      );
       const stempel = periodeTxt ? periodeTxt.replace(/[^A-Za-z0-9]+/g, "-") : "EXPORT";
-      downloadBlob(blob, `CEK_${activeKat}_${stempel}.xlsx`);
+
+      if (activeKat === "TERLAMBAT") {
+        const blob = await buildCekKeterlambatanXlsx(lateIncidents, latePeriodeTxt || periodeTxt);
+        downloadBlob(blob, `CEK_TERLAMBAT_${stempel}.xlsx`);
+      } else {
+        const blob = await buildCekKategoriXlsx(
+          karyawan,
+          activeKat,
+          activeKatConfig ? activeKatConfig[2] : activeKat,
+          periodeTxt,
+          hariBelumFinal
+        );
+        downloadBlob(blob, `CEK_${activeKat}_${stempel}.xlsx`);
+      }
     } catch (err) {
       console.error(err);
       alert("Gagal mengunduh file: " + (err as Error).message);
@@ -51,11 +70,23 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
 
   // 1. Raw Data for Summary Karyawan
   const allSummaryKaryawanRows = useMemo<SummaryKaryawanRow[]>(() => {
+    if (activeKat === "TERLAMBAT") {
+      const lateSummaries = aggregateLateByEmployee(lateIncidents);
+      return lateSummaries.map(s => ({
+        nuc: s.nuc,
+        nama: s.nama,
+        jabatan: s.jabatan,
+        project: s.project,
+        total: s.frekuensi,
+        totalMenit: s.totalMenit,
+        tanggal: s.tanggalList.join(", "),
+      }));
+    }
+
     const rows: SummaryKaryawanRow[] = [];
     karyawan.forEach(k => {
       let ev = k.kejadian.filter(e => e[2] === activeKat);
 
-      // Handle sub-filtering for BA (BA_H or BA_A)
       if (activeKat === "BA") {
         if (selectedTypeFilter === "BA_H") {
           ev = ev.filter(e => e[1] === "h");
@@ -107,7 +138,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
       }
     });
     return rows;
-  }, [karyawan, activeKat, selectedTypeFilter]);
+  }, [karyawan, activeKat, selectedTypeFilter, lateIncidents]);
 
   // Filtered Summary Karyawan Rows based on search query
   const filteredSummaryKaryawanRows = useMemo(() => {
@@ -120,6 +151,18 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
 
   // 2. Raw Data for Detail Kejadian
   const allDetailRows = useMemo<DetailKejadianRow[]>(() => {
+    if (activeKat === "TERLAMBAT") {
+      return lateIncidents.map(inc => ({
+        nuc: inc.nuc,
+        nama: inc.nama,
+        jabatan: inc.jabatan,
+        project: inc.project,
+        tanggal: inc.tanggal,
+        kode: `${inc.menit} m`,
+        status: `Masuk: ${inc.jamMasuk} (Jadwal: ${inc.jadwalMulai})`,
+      }));
+    }
+
     const rows: DetailKejadianRow[] = [];
     karyawan.forEach(k => {
       let ev = k.kejadian.filter(e => e[2] === activeKat);
@@ -151,7 +194,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
       });
     });
     return rows;
-  }, [karyawan, activeKat, selectedTypeFilter]);
+  }, [karyawan, activeKat, selectedTypeFilter, lateIncidents]);
 
   // Filtered Detail Rows based on search query
   const filteredDetailRows = useMemo(() => {
@@ -162,10 +205,23 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
     );
   }, [allDetailRows, cleanQuery]);
 
-  // 3. Raw Data for Summary Project (Aggregated from Filtered Detail Rows)
+  // 3. Raw Data for Summary Project
   const filteredPerProject = useMemo(() => {
-    const map: Record<string, { karyawanSet: Set<string>; incidentCount: number; baH: number; baA: number }> = {};
+    if (activeKat === "TERLAMBAT") {
+      const map: Record<string, { karyawanSet: Set<string>; incidentCount: number; baH: number; baA: number; totalMenit: number }> = {};
+      filteredDetailRows.forEach(r => {
+        if (!map[r.project]) {
+          map[r.project] = { karyawanSet: new Set(), incidentCount: 0, baH: 0, baA: 0, totalMenit: 0 };
+        }
+        map[r.project].karyawanSet.add(`${r.nuc}___${r.nama}`);
+        map[r.project].incidentCount++;
+        const menitNum = parseInt(r.kode.replace(/[^\d]/g, ""), 10) || 0;
+        map[r.project].totalMenit += menitNum;
+      });
+      return map;
+    }
 
+    const map: Record<string, { karyawanSet: Set<string>; incidentCount: number; baH: number; baA: number; totalMenit?: number }> = {};
     filteredDetailRows.forEach(r => {
       if (!map[r.project]) {
         map[r.project] = { karyawanSet: new Set(), incidentCount: 0, baH: 0, baA: 0 };
@@ -177,15 +233,19 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
     });
 
     return map;
-  }, [filteredDetailRows]);
+  }, [filteredDetailRows, activeKat]);
 
   // 4. Raw Data for Perlu Tindak Lanjut
   const allPolas = useMemo(() => {
+    if (activeKat === "TERLAMBAT") {
+      const summaries = aggregateLateByEmployee(lateIncidents);
+      return detectLatePatterns(summaries, 3);
+    }
     if (activeKat === "ALFA" || activeKat === "SAKIT" || activeKat === "IZIN") {
       return hitungPola(karyawan, activeKat, hariBelumFinal);
     }
     return [];
-  }, [karyawan, activeKat, hariBelumFinal]);
+  }, [karyawan, activeKat, hariBelumFinal, lateIncidents]);
 
   // Filtered Polas based on search query
   const filteredPolas = useMemo(() => {
@@ -212,7 +272,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Ketik nama karyawan, NIK, jabatan, atau proyek untuk mencari..."
+            placeholder="Ketik nama karyawan, NIK/NUC, jabatan, atau proyek untuk mencari..."
             className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-blue-900 focus:border-blue-900 transition-colors"
           />
           {searchQuery && (
@@ -237,7 +297,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
             onChange={e => {
               const val = e.target.value;
               setSelectedTypeFilter(val);
-              if (["ALFA", "SAKIT", "IZIN", "LEMBUR", "BA"].includes(val)) {
+              if (["ALFA", "SAKIT", "IZIN", "LEMBUR", "BA", "TERLAMBAT"].includes(val)) {
                 setActiveKat(val as any);
               } else if (val === "BA_H" || val === "BA_A") {
                 setActiveKat("BA");
@@ -253,11 +313,12 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
             <option value="BA">Semua BA (h &amp; a)</option>
             <option value="BA_H">BA Diterima / Hadir (h)</option>
             <option value="BA_A">BA Ditolak / Alfa (a)</option>
+            {lateIncidents.length > 0 && <option value="TERLAMBAT">Keterlambatan Menit</option>}
           </select>
         </div>
       </div>
 
-      {/* Category Tabs (5 Categories) */}
+      {/* Category Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200 p-2.5 rounded-xl shadow-2xs">
         <div className="flex items-center gap-1.5 overflow-x-auto">
           {KATEGORI_FILE.map(([, kat, kodeTxt]) => {
@@ -295,6 +356,36 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
               </button>
             );
           })}
+
+          {/* Tab Tambahan: TERLAMBAT (bila file diunggah) */}
+          {lateIncidents.length > 0 && (
+            <button
+              onClick={() => {
+                setActiveKat("TERLAMBAT");
+                setSelectedTypeFilter("TERLAMBAT");
+              }}
+              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                activeKat === "TERLAMBAT"
+                  ? "bg-amber-800 text-white shadow-xs"
+                  : "text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80"
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>TERLAMBAT</span>
+              <span className="text-[10px] opacity-75 font-normal font-mono">
+                (&gt;0 m)
+              </span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  activeKat === "TERLAMBAT"
+                    ? "bg-white/20 text-white"
+                    : "bg-amber-200 text-amber-900"
+                }`}
+              >
+                {lateIncidents.length}
+              </span>
+            </button>
+          )}
         </div>
 
         <button
@@ -324,6 +415,16 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
           <Info className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
           <div>
             <span className="font-semibold">Keterangan Berita Acara (BA):</span> Kode <strong>h</strong> adalah BA Diterima (dihitung Masuk / Hadir), sedangkan kode <strong>a</strong> adalah BA Ditolak (tetap dihitung Alfa).
+          </div>
+        </div>
+      )}
+
+      {activeKat === "TERLAMBAT" && (
+        <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-950">
+          <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">Laporan Keterlambatan:</span> Menghitung seluruh kejadian dengan{" "}
+            <strong>Keterlambatan &gt; 0 menit</strong> berdasarkan selisih jam masuk aktual terhadap jadwal mulai kerja.
           </div>
         </div>
       )}
@@ -361,7 +462,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
           >
             Summary Project ({Object.keys(filteredPerProject).length})
           </button>
-          {(activeKat === "ALFA" || activeKat === "SAKIT" || activeKat === "IZIN") && (
+          {(activeKat === "ALFA" || activeKat === "SAKIT" || activeKat === "IZIN" || activeKat === "TERLAMBAT") && (
             <button
               onClick={() => setSubTab("tindak_lanjut")}
               className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
@@ -371,7 +472,7 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
               }`}
             >
               <Activity className="w-3.5 h-3.5 text-rose-600" />
-              <span>Perlu Tindak Lanjut</span>
+              <span>{activeKat === "TERLAMBAT" ? "Sering Terlambat (≥3x)" : "Perlu Tindak Lanjut"}</span>
               {filteredPolas.length > 0 && (
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full font-mono bg-rose-100 text-rose-800 font-bold">
                   {filteredPolas.length}
@@ -415,8 +516,8 @@ export const StepCekAbsensiView: React.FC<StepCekAbsensiViewProps> = ({
         {subTab === "tindak_lanjut" && (
           <CekTindakLanjutTable
             filteredPolas={filteredPolas}
-            activeKat={activeKat}
-            hariBelumFinalCount={hariBelumFinal.size}
+            activeKat={activeKat === "TERLAMBAT" ? "ALFA" : activeKat}
+            hariBelumFinalCount={activeKat === "TERLAMBAT" ? 0 : hariBelumFinal.size}
             searchQuery={searchQuery}
             onResetSearch={handleResetSearch}
           />

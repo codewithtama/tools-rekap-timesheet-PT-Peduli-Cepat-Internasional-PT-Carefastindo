@@ -1,7 +1,8 @@
-import { KaryawanCek, PicPackage } from "../../types/attendance";
+import { KaryawanCek, LateIncident, PicPackage, LateEmployeeSummary } from "../../types/attendance";
 import { parseISODate, tglId } from "./dateUtils";
 import { namaAman } from "./stringUtils";
 import { hitungPola } from "./anomalyDetector";
+import { aggregateLateByEmployee } from "./lateParser";
 
 /**
  * Draft PIC Message for WhatsApp / Email
@@ -10,9 +11,19 @@ export function susunPesan(
   proyek: string,
   periodeTxt: string,
   jmlKaryawan: number,
-  tot: { ALFA: number; SAKIT: number; IZIN: number; LEMBUR: number; BA_h: number; BA_a: number },
+  tot: {
+    ALFA: number;
+    SAKIT: number;
+    IZIN: number;
+    LEMBUR: number;
+    BA_h: number;
+    BA_a: number;
+    LATE_freq?: number;
+    LATE_menit?: number;
+  },
   tlBaris: [number, string, string, string, string, number, string, string][],
-  hariBelumFinal: Set<string> = new Set()
+  hariBelumFinal: Set<string> = new Set(),
+  seringTerlambat: LateEmployeeSummary[] = []
 ): string {
   const baris: string[] = [];
   baris.push(`Selamat siang Bapak/Ibu PIC ${proyek},`);
@@ -25,15 +36,24 @@ export function susunPesan(
   baris.push(`- Izin   : ${tot.IZIN} hari`);
   baris.push(`- Lembur : ${tot.LEMBUR} hari`);
   baris.push(`- BA     : ${tot.BA_h} diterima, ${tot.BA_a} ditolak`);
+  if (tot.LATE_freq && tot.LATE_freq > 0) {
+    baris.push(`- Terlambat: ${tot.LATE_freq} kali (total ${tot.LATE_menit || 0} menit)`);
+  }
   baris.push("");
 
-  if (tlBaris.length > 0) {
+  if (tlBaris.length > 0 || seringTerlambat.length > 0) {
     const per: Record<string, string[]> = {};
     for (const [, nuc, nama, , kat, jml, pola] of tlBaris) {
       const key = `${nama} (${nuc})`;
       if (!per[key]) per[key] = [];
       const katCapital = kat.charAt(0).toUpperCase() + kat.slice(1).toLowerCase();
       per[key].push(`${katCapital} ${jml}x (${pola})`);
+    }
+
+    for (const st of seringTerlambat) {
+      const key = `${st.nama} (${st.nuc})`;
+      if (!per[key]) per[key] = [];
+      per[key].push(`Terlambat ${st.frekuensi}x (${st.totalMenit} menit)`);
     }
 
     const perKeys = Object.keys(per);
@@ -49,7 +69,7 @@ export function susunPesan(
     });
     baris.push("");
     baris.push(
-      "Mohon dikonfirmasi alasan ketidakhadiran karyawan di atas beserta bukti pendukungnya " +
+      "Mohon dikonfirmasi alasan ketidakhadiran/keterlambatan karyawan di atas beserta bukti pendukungnya " +
       "(surat dokter, surat izin, atau BA) paling lambat 2 hari kerja setelah pesan ini diterima."
     );
   } else {
@@ -81,7 +101,8 @@ export function susunPesan(
 export function bangunPaketPic(
   karyawan: KaryawanCek[],
   periodeTxt: string,
-  hariBelumFinal: Set<string> = new Set()
+  hariBelumFinal: Set<string> = new Set(),
+  lateIncidents: LateIncident[] = []
 ): PicPackage[] {
   const perProyek: Record<string, KaryawanCek[]> = {};
   for (const k of karyawan) {
@@ -89,10 +110,30 @@ export function bangunPaketPic(
     perProyek[k.project].push(k);
   }
 
+  // Group late incidents by project
+  const lateByProyek: Record<string, LateIncident[]> = {};
+  for (const inc of lateIncidents) {
+    const proj = inc.project || "Tanpa Project";
+    if (!lateByProyek[proj]) lateByProyek[proj] = [];
+    lateByProyek[proj].push(inc);
+  }
+
   const hasil: PicPackage[] = [];
 
   for (const [proyek, daftar] of Object.entries(perProyek)) {
     const aman = namaAman(proyek);
+
+    // Check matched late incidents for this project
+    const matchedLate = lateByProyek[proyek] || [];
+    const lateSummaries = aggregateLateByEmployee(matchedLate);
+    const seringTerlambat = lateSummaries.filter(s => s.frekuensi >= 3);
+
+    let lateFreq = 0;
+    let lateMenit = 0;
+    matchedLate.forEach(inc => {
+      lateFreq++;
+      lateMenit += inc.menit;
+    });
 
     const tot = {
       ALFA: 0,
@@ -101,6 +142,8 @@ export function bangunPaketPic(
       LEMBUR: 0,
       BA_h: 0,
       BA_a: 0,
+      LATE_freq: lateFreq,
+      LATE_menit: lateMenit,
     };
     let nKejadian = 0;
 
@@ -140,7 +183,15 @@ export function bangunPaketPic(
       r[0] = idx + 1;
     });
 
-    const pesan = susunPesan(proyek, periodeTxt, daftar.length, tot, tlBaris, hariBelumFinal);
+    const pesan = susunPesan(
+      proyek,
+      periodeTxt,
+      daftar.length,
+      tot,
+      tlBaris,
+      hariBelumFinal,
+      seringTerlambat
+    );
 
     hasil.push({
       proyek,
@@ -148,12 +199,12 @@ export function bangunPaketPic(
       daftar,
       tl_baris: tlBaris,
       tot,
-      n_tl: tlNuc.size,
-      n_kejadian: nKejadian,
+      late_karyawan: lateSummaries,
+      n_tl: tlNuc.size + seringTerlambat.length,
+      n_kejadian: nKejadian + (lateFreq > 0 ? 1 : 0),
       pesan,
     });
   }
 
   return hasil;
 }
-

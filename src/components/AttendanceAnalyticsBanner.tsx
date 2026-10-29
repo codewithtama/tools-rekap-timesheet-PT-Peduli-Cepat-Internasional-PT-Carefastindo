@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
-import { RekapProjectData } from "../types/attendance";
+import { RekapProjectData, LateIncident } from "../types/attendance";
 import { jmlHari } from "../utils/attendanceEngine";
-import { AnalyticsKpiCards, KpiTotals } from "./analytics/AnalyticsKpiCards";
+import { AnalyticsKpiCards, KpiTotals, LateKpiTotals } from "./analytics/AnalyticsKpiCards";
 import { ExecutiveSummaryCard } from "./analytics/ExecutiveSummaryCard";
 import { AttendanceCategoryPieChart, PieChartItem } from "./analytics/AttendanceCategoryPieChart";
 import { ProjectAttendanceBarChart, BarChartItem } from "./analytics/ProjectAttendanceBarChart";
@@ -10,6 +10,7 @@ import { ProjectAttendanceBarChart, BarChartItem } from "./analytics/ProjectAtte
 interface AttendanceAnalyticsBannerProps {
   projects: RekapProjectData[];
   effectiveRange?: { dari: Date; sampai: Date } | null;
+  lateIncidents?: LateIncident[];
 }
 
 const CATEGORY_COLORS = {
@@ -24,6 +25,7 @@ const CATEGORY_COLORS = {
 export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps> = ({
   projects,
   effectiveRange,
+  lateIncidents = [],
 }) => {
   const [showCharts, setShowCharts] = useState<boolean>(false);
 
@@ -63,7 +65,6 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
       totalMandays > 0 ? Math.min(100, Math.round((hadir / totalMandays) * 1000) / 10) : 0;
 
     // totalAnomali: total seluruh catatan kejadian harian unik
-    // (alfa sudah mencakup baA, hadir sudah mencakup baH, jadi baA tidak dihitung dua kali)
     const totalAnomali = (alfa - baA) + baA + baH + sakit + izin + lembur;
 
     return {
@@ -81,6 +82,22 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
       totalAnomali,
     };
   }, [projects, effectiveRange]);
+
+  // Aggregate late statistics if file is uploaded
+  const lateTotals = useMemo<LateKpiTotals | null>(() => {
+    if (!lateIncidents || lateIncidents.length === 0) return null;
+    const nucSet = new Set<string>();
+    let totalMenit = 0;
+    lateIncidents.forEach(inc => {
+      nucSet.add(`${inc.nuc}___${inc.nama}`);
+      totalMenit += inc.menit;
+    });
+    return {
+      count: lateIncidents.length,
+      totalMenit,
+      karyawanCount: nucSet.size,
+    };
+  }, [lateIncidents]);
 
   // Data for Donut Chart (Breakdown tanpa double-counting)
   const pieData = useMemo<PieChartItem[]>(() => {
@@ -123,6 +140,11 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Gambaran kehadiran dan catatan ketidakhadiran dari {projects.length} proyek yang sedang berjalan.
+            {lateTotals && (
+              <span className="ml-1 text-amber-700 font-medium">
+                (Termasuk data {lateTotals.count} kejadian terlambat)
+              </span>
+            )}
           </p>
         </div>
 
@@ -148,8 +170,8 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
         </div>
       </div>
 
-      {/* KPI Stat Cards Strip (6 items, compact 1-row) */}
-      <AnalyticsKpiCards kpiTotals={kpiTotals} />
+      {/* KPI Stat Cards Strip (6 or 7 items, compact 1-row) */}
+      <AnalyticsKpiCards kpiTotals={kpiTotals} lateTotals={lateTotals} />
 
       {/* Tri-Column Responsive Dashboard Grid (Collapsible) */}
       {showCharts && (
