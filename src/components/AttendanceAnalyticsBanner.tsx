@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
 import { RekapProjectData } from "../types/attendance";
 import { jmlHari } from "../utils/attendanceEngine";
 import { AnalyticsKpiCards, KpiTotals } from "./analytics/AnalyticsKpiCards";
@@ -24,6 +25,8 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
   projects,
   effectiveRange,
 }) => {
+  const [showCharts, setShowCharts] = useState<boolean>(false);
+
   // Aggregate overall KPI metrics
   const kpiTotals = useMemo<KpiTotals>(() => {
     let mp = 0;
@@ -106,9 +109,9 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
   }, [projects]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-2xs space-y-5">
+    <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 mb-5 shadow-2xs space-y-4">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>
           <h2 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
             Ringkasan Kehadiran &amp; Catatan Lapangan
@@ -117,35 +120,55 @@ export const AttendanceAnalyticsBanner: React.FC<AttendanceAnalyticsBannerProps>
             Gambaran kehadiran dan catatan ketidakhadiran dari {projects.length} proyek yang sedang berjalan.
           </p>
         </div>
-        <div className="text-xs font-mono text-slate-500">
-          Total Catatan Khusus: <strong className="text-slate-900 tabular-nums">{kpiTotals.totalAnomali}</strong> hari
+
+        <div className="flex items-center gap-3">
+          <div className="text-xs font-mono text-slate-500 hidden sm:inline">
+            Total Catatan Khusus: <strong className="text-slate-900 tabular-nums">{kpiTotals.totalAnomali}</strong> hari
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowCharts(!showCharts)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
+            title={showCharts ? "Tutup tampilan grafik untuk melihat tabel data langsung" : "Buka tampilan grafik Donut dan perbandingan per proyek"}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>{showCharts ? "Sembunyikan Grafik" : "Tampilkan Grafik"}</span>
+            {showCharts ? (
+              <ChevronUp className="w-3.5 h-3.5 ml-0.5 text-blue-700" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 ml-0.5 text-blue-700" />
+            )}
+          </button>
         </div>
       </div>
 
-      {/* KPI Stat Cards Strip (6 items) */}
+      {/* KPI Stat Cards Strip (6 items, compact 1-row) */}
       <AnalyticsKpiCards kpiTotals={kpiTotals} />
 
-      {/* Tri-Column Responsive Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1">
-        {/* Kolom 1: Integrated Executive Summary Sidebar Card (4 cols) */}
-        <ExecutiveSummaryCard
-          kpiTotals={kpiTotals}
-          projects={projects}
-          effectiveRange={effectiveRange}
-        />
+      {/* Tri-Column Responsive Dashboard Grid (Collapsible) */}
+      {showCharts && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1 border-t border-slate-100 animate-in fade-in duration-200">
+          {/* Kolom 1: Integrated Executive Summary Sidebar Card (4 cols) */}
+          <ExecutiveSummaryCard
+            kpiTotals={kpiTotals}
+            projects={projects}
+            effectiveRange={effectiveRange}
+          />
 
-        {/* Kolom 2: Donut Chart Distribusi Global (4 cols) */}
-        <AttendanceCategoryPieChart
-          pieData={pieData}
-          kpiTotals={kpiTotals}
-        />
+          {/* Kolom 2: Donut Chart Distribusi Global (4 cols) */}
+          <AttendanceCategoryPieChart
+            pieData={pieData}
+            kpiTotals={kpiTotals}
+          />
 
-        {/* Kolom 3: Grouped Bar Chart Per Proyek (4 cols) */}
-        <ProjectAttendanceBarChart
-          barData={barData}
-          categoryColors={CATEGORY_COLORS}
-        />
-      </div>
+          {/* Kolom 3: Grouped Bar Chart Per Proyek (4 cols) */}
+          <ProjectAttendanceBarChart
+            barData={barData}
+            categoryColors={CATEGORY_COLORS}
+          />
+        </div>
+      )}
     </div>
   );
 };

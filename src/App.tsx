@@ -281,7 +281,7 @@ export default function App() {
         templateLoaded={templateLoaded}
       />
 
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-5">
         <FileUploadZone
           onFilesSelected={handleFilesSelected}
           onTemplateSelected={handleTemplateSelected}
@@ -330,6 +330,67 @@ export default function App() {
 
         {!hasData && !isLoading && (
           <EmptyStateGuide onLoadSample={handleLoadSample} />
+        )}
+
+        {/* In-page Step Tab Header Bar directly above the Table view */}
+        {hasData && !isLoading && (
+          <div className="bg-white border border-slate-200 rounded-xl p-2.5 mb-5 shadow-2xs flex flex-wrap items-center justify-between gap-3 sticky top-[62px] z-20">
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              <button
+                onClick={() => setActiveStep(1)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeStep === 1
+                    ? "bg-blue-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                1. Konversi Timesheet
+              </button>
+              <button
+                onClick={() => setActiveStep(2)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeStep === 2
+                    ? "bg-blue-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                2. Rekap Summary
+                {!templateLoaded && (
+                  <span className="text-[10px] opacity-75 font-normal">(Dilewati)</span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveStep(3)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeStep === 3
+                    ? "bg-blue-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                3. Cek Ketidakhadiran
+              </button>
+              <button
+                onClick={() => setActiveStep(4)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  activeStep === 4
+                    ? "bg-blue-900 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                4. Paket PIC Proyek
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-500 font-medium hidden sm:flex items-center gap-1.5">
+              <span>Menampilkan:</span>
+              <span className="font-semibold text-blue-950 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                {activeStep === 1 && "Tabel Rekap Timesheet Harian"}
+                {activeStep === 2 && "Tabel Ringkasan 13 Kolom & Grand Total"}
+                {activeStep === 3 && "Tabel Ketidakhadiran & Pola Khusus"}
+                {activeStep === 4 && "Paket Berkas & Draf Pesan PIC per Proyek"}
+              </span>
+            </div>
+          </div>
         )}
 
         {hasData && !isLoading && (
