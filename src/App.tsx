@@ -13,6 +13,7 @@ import { StepSummaryView } from "./components/StepSummaryView";
 import { StepCekAbsensiView } from "./components/StepCekAbsensiView";
 import { StepPaketPicView } from "./components/StepPaketPicView";
 import { EmptyStateGuide } from "./components/EmptyStateGuide";
+import { CloudflareTurnstileChallenge } from "./components/CloudflareTurnstileChallenge";
 import {
   TimesheetData,
   RekapProjectData,
@@ -51,6 +52,7 @@ export default function App() {
   const [prosesSemua, setProsesSemua] = useState<boolean>(false);
   const [customRange, setCustomRange] = useState<{ dari: Date; sampai: Date } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [turnstileVerified, setTurnstileVerified] = useState<boolean>(false);
 
   // Late Incidents State (Laporan Keterlambatan)
   const [lateIncidents, setLateIncidents] = useState<LateIncident[]>([]);
@@ -481,11 +483,23 @@ export default function App() {
               Rumus hitungan, penyesuaian hari kerja, dan deteksi pola absensi 100% mengikuti standar <code>proses_absensi.py</code>.
             </span>
           </div>
-          <div>
-            Divisi HRD &amp; Personalia · PT Peduli Cepat Internasional
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setTurnstileVerified(false)}
+              title="Klik untuk uji simulasi proteksi Cloudflare Turnstile"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Cloudflare Protected</span>
+            </button>
+            <span>Divisi HRD &amp; Personalia · PT Peduli Cepat Internasional</span>
           </div>
         </div>
       </footer>
+
+      {!turnstileVerified && (
+        <CloudflareTurnstileChallenge onVerified={() => setTurnstileVerified(true)} />
+      )}
     </div>
   );
 }
