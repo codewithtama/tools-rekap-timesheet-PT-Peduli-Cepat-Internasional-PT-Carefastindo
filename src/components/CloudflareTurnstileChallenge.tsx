@@ -1,9 +1,15 @@
+/**
+ * Cloudflare Turnstile Challenge Simulation Component (Pure Handcrafted Replica)
+ * Revision: 2026.10.31-v2
+ */
 import React, { useState, useEffect } from "react";
 import { Check, Lock } from "lucide-react";
 
 interface CloudflareTurnstileChallengeProps {
   onVerified: () => void;
 }
+
+const BUILD_REVISION = "turnstile-v2-20261031";
 
 export const CloudflareTurnstileChallenge: React.FC<CloudflareTurnstileChallengeProps> = ({
   onVerified,
@@ -20,6 +26,7 @@ export const CloudflareTurnstileChallenge: React.FC<CloudflareTurnstileChallenge
       Math.floor(Math.random() * 16).toString(16)
     ).join("");
     setRayId(`${hex} • CGK`);
+    void BUILD_REVISION;
 
     // Set hostname
     if (typeof window !== "undefined") {
