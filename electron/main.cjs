@@ -3,7 +3,7 @@
  * Rekap Timesheet Carefast & PCI Desktop Application
  */
 
-const { app, BrowserWindow, shell, session } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 let mainWindow = null;
@@ -16,23 +16,37 @@ function createWindow() {
     minHeight: 700,
     title: 'Tools Rekap Timesheet - Carefast & PCI',
     autoHideMenuBar: true,
-    show: false, // Don't show until ready-to-show to prevent white flash
+    show: false,
+    backgroundColor: '#0f172a',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
       preload: path.join(__dirname, 'preload.cjs'),
-      webSecurity: true,
     },
   });
 
-  // Smooth appearance when content is painted
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
+  let isWindowShown = false;
+  const showWindow = () => {
+    if (!isWindowShown && mainWindow && !mainWindow.isDestroyed()) {
+      isWindowShown = true;
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  };
 
-  // Load the production Vite build
-  mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  // Primary event when DOM is painted
+  mainWindow.once('ready-to-show', showWindow);
+
+  // Fallback safety timer: show window within 1.5s regardless of external asset delays
+  const fallbackTimer = setTimeout(showWindow, 1500);
+
+  // Load production Vite build
+  const indexPath = path.join(__dirname, '../dist/index.html');
+  mainWindow.loadFile(indexPath).catch((err) => {
+    clearTimeout(fallbackTimer);
+    showWindow();
+  });
 
   // Ensure external links open in system default browser (not inside the app window)
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -43,6 +57,7 @@ function createWindow() {
   });
 
   mainWindow.on('closed', () => {
+    clearTimeout(fallbackTimer);
     mainWindow = null;
   });
 }
@@ -54,8 +69,10 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.show();
       mainWindow.focus();
     }
   });
@@ -76,4 +93,3 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
-
